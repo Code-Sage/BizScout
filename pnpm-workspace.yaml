@@ -1,0 +1,11 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "e2e"
+
+# pnpm 11 refuses to install when a dependency's build script is not explicitly allowed or denied.
+# esbuild (used by tsx, tsup, vite, drizzle-kit) needs its postinstall to fetch its native binary.
+# msw's postinstall only copies a browser service worker, which we never use.
+allowBuilds:
+  esbuild: true
+  msw: false

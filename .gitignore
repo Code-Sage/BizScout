@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+
+# builds & reports
+dist/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# logs
+*.log
+
+# private brief from BizScout — never commit
+BizScout - Take Home Test*.pdf
