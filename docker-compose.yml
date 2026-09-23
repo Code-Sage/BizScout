@@ -1,0 +1,28 @@
+name: bizscout
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: bizscout
+      POSTGRES_PASSWORD: bizscout
+      POSTGRES_DB: bizscout
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bizscout -d bizscout']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Offline/CI stand-in for httpbin.org (same /anything contract).
+  httpbin:
+    image: mccutchen/go-httpbin:2.25
+    ports:
+      - '8080:8080'
+
+volumes:
+  pgdata:
