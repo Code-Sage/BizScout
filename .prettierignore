@@ -5,3 +5,7 @@ pnpm-lock.yaml
 **/test-results
 apps/api/drizzle
 *.pdf
+
+# planning docs and agent workspace: never reformat
+docs/superpowers/
+.superpowers/
