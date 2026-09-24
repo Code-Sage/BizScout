@@ -19,6 +19,13 @@ If something already listens on 5432 (e.g. a Homebrew Postgres), either stop it 
 `POSTGRES_PORT=55432 docker compose up -d --wait` and point `DATABASE_URL` / `DATABASE_URL_TEST`
 at port 55432 instead.
 
+Then, in a second terminal:
+
+```bash
+cp apps/web/.env.example apps/web/.env
+pnpm --filter @bizscout/web dev   # http://localhost:5173
+```
+
 ## Documentation
 
 | Doc                    | What's inside                                   |
