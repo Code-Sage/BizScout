@@ -2,7 +2,11 @@ import { formatDistanceStrict } from 'date-fns';
 
 export function formatDuration(ms: number): string {
   if (ms < 1_000) return `${ms} ms`;
-  return `${(ms / 1_000).toFixed(ms < 10_000 ? 2 : 1)} s`;
+  const seconds = ms / 1_000;
+  // Decide the precision from the rounded value, not the raw ms: 9_999ms is 9.999s, which at two
+  // decimals rounds up to "10.00" — a misleadingly precise-looking value for a rounded number.
+  const decimals = Number(seconds.toFixed(2)) >= 10 ? 1 : 2;
+  return `${seconds.toFixed(decimals)} s`;
 }
 
 export function formatBytes(bytes: number | null): string {
@@ -13,7 +17,11 @@ export function formatBytes(bytes: number | null): string {
 
 export function formatPercent(ratio: number | null): string {
   if (ratio === null) return '—';
-  return ratio === 1 ? '100%' : `${(ratio * 100).toFixed(1)}%`;
+  if (ratio === 1) return '100%';
+  // Round DOWN (truncate), never up: a 99.95% success rate must never read as "100.0%",
+  // which would hide the fact that something is still failing.
+  const truncated = Math.floor(ratio * 1_000) / 10;
+  return `${truncated.toFixed(1)}%`;
 }
 
 /** Local wall-clock time, e.g. "10:05:00 AM" (user's locale and time zone). */
