@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
+import { RefreshError } from '../../../components/RefreshError';
 import { Skeleton } from '../../../components/Skeleton';
 import { formatDateTime } from '../../../lib/format';
 import { toChartPoints } from '../chart-data';
@@ -30,7 +31,9 @@ export function ResponseTimeChart({ window }: { window: StatsWindow }) {
   const data = useMemo(() => toChartPoints(query.data?.points ?? []), [query.data]);
 
   if (query.isPending) return <Skeleton className="h-64" />;
-  if (query.isError) {
+  // A failed background refetch also sets isError, even though `data` is still the last good
+  // response (TanStack v5). Only fall back to the full-panel error when there is nothing cached.
+  if (query.data === undefined) {
     return (
       <ErrorState
         title="Couldn't load the response-time chart"
@@ -56,6 +59,11 @@ export function ResponseTimeChart({ window }: { window: StatsWindow }) {
       <figcaption className="mb-2 text-sm font-medium text-slate-700">
         Response time (ms) · failures in red
       </figcaption>
+      {query.isError && (
+        <div className="mb-2">
+          <RefreshError onRetry={() => void query.refetch()} />
+        </div>
+      )}
       <div className="h-60">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
