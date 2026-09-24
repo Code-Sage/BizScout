@@ -1,0 +1,14 @@
+@import 'tailwindcss';
+
+@theme {
+  --animate-flash: flash 2.5s ease-out;
+
+  @keyframes flash {
+    from {
+      background-color: var(--color-amber-100);
+    }
+    to {
+      background-color: transparent;
+    }
+  }
+}

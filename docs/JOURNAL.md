@@ -18,3 +18,11 @@ A running log of what was built, the decisions behind it, surprises, and time sp
 - Verification: integration tests and the live pipeline test ran against a local Postgres 17 stand-in (port 55432) and an httpbin-compatible stub (port 8080) because Docker isn't installed on the build machine.
 - Deviations from plan: non-2xx responses are classified HTTP_ERROR before JSON parsing; payloadEvent is only a string when the payload's event is a string; the scheduler resets its slot memory on stop(); server.ts exits 1 when the port can't be bound.
 - Time: ~2 h (agent-executed)
+
+## Phase 3 — Frontend dashboard
+
+- Built: Vite/React app, typed API client, TanStack Query hooks, SSE → cache merge, live indicator, table with pagination + live highlights, stat cards, chart, detail drawer, error boundary.
+- Decisions: ADR-0005. happy-dom over jsdom (AbortSignal incompatibility with Node fetch under MSW).
+- Verification: component/hook tests (63) passed; a browser check against the local API confirmed the live row insert without reload, the detail drawer (Escape closes), the 375 px layout without horizontal scroll, and reconnect ("Reconnecting…" → "Live").
+- Deviations from plan: SegmentedControl implements the full radio-group keyboard pattern (roving tabindex, arrow/Home/End keys); an abort-passthrough test was added for the API client.
+- Time: ~1.5 h (agent-executed)
