@@ -71,6 +71,47 @@ describe('HttpbinClient', () => {
     });
   });
 
+  it('classifies a non-2xx response with a malformed JSON body as HTTP_ERROR, not INVALID_RESPONSE', async () => {
+    server.use(
+      http.post(
+        TARGET,
+        () =>
+          new HttpResponse('<html>bad gateway</html>', {
+            status: 502,
+            headers: { 'content-type': 'application/json' },
+          }),
+      ),
+    );
+    const result = await new HttpbinClient({ url: TARGET, timeoutMs: 1_000 }).send({});
+    expect(result).toMatchObject({
+      ok: false,
+      statusCode: 502,
+      errorCode: 'HTTP_ERROR',
+      errorMessage: 'HTTP 502 Bad Gateway',
+      body: '<html>bad gateway</html>',
+    });
+  });
+
+  it('classifies a non-2xx HTML response as HTTP_ERROR', async () => {
+    server.use(
+      http.post(
+        TARGET,
+        () =>
+          new HttpResponse('<html>Service Unavailable</html>', {
+            status: 503,
+            headers: { 'content-type': 'text/html' },
+          }),
+      ),
+    );
+    const result = await new HttpbinClient({ url: TARGET, timeoutMs: 1_000 }).send({});
+    expect(result).toMatchObject({
+      ok: false,
+      statusCode: 503,
+      errorCode: 'HTTP_ERROR',
+      body: '<html>Service Unavailable</html>',
+    });
+  });
+
   it('classifies a body that claims JSON but is not as INVALID_RESPONSE', async () => {
     server.use(
       http.post(

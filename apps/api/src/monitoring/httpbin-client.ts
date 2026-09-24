@@ -59,22 +59,21 @@ export class HttpbinClient {
         headers: Object.fromEntries(response.headers.entries()),
       };
 
+      // Body starts as raw text; only overwritten below on a successful JSON.parse. So on a parse
+      // failure `body` is already the raw text we want to keep.
       let body: unknown = text;
+      let jsonParseFailed = false;
       const declaresJson = (response.headers.get('content-type') ?? '').includes('json');
       if (declaresJson && text.length > 0) {
         try {
           body = JSON.parse(text);
         } catch {
-          return {
-            ...base,
-            ok: false,
-            body: text,
-            errorCode: 'INVALID_RESPONSE',
-            errorMessage: 'Response declared JSON but could not be parsed',
-          };
+          jsonParseFailed = true;
         }
       }
 
+      // Non-2xx always wins: a proxy's malformed 502/504 body must not mask the outage as
+      // INVALID_RESPONSE, since HTTP_ERROR is the signal the monitor exists to detect.
       if (!response.ok) {
         const statusText = response.statusText ? ` ${response.statusText}` : '';
         return {
@@ -83,6 +82,16 @@ export class HttpbinClient {
           body,
           errorCode: 'HTTP_ERROR',
           errorMessage: `HTTP ${response.status}${statusText}`,
+        };
+      }
+
+      if (jsonParseFailed) {
+        return {
+          ...base,
+          ok: false,
+          body,
+          errorCode: 'INVALID_RESPONSE',
+          errorMessage: 'Response declared JSON but could not be parsed',
         };
       }
 
