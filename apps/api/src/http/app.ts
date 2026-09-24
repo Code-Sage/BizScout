@@ -9,6 +9,7 @@ import type { SseHub } from '../realtime/sse-hub';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { createHttpLogger } from './middleware/http-logger';
 import { createHealthRouter } from './routes/health.routes';
+import { createPingsRouter } from './routes/pings.routes';
 import { createStreamRouter } from './routes/stream.routes';
 
 export interface AppDeps {
@@ -53,6 +54,7 @@ export function createApp(deps: AppDeps): Express {
     }),
   );
   app.use('/api', createStreamRouter({ hub: deps.hub, pings: deps.pings, logger: deps.logger }));
+  app.use('/api/pings', createPingsRouter({ pings: deps.pings, now: deps.now }));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
