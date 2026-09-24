@@ -13,6 +13,8 @@ export default defineConfig([
     '**/playwright-report/**',
     '**/test-results/**',
     'apps/api/drizzle/**',
+    // agent workspaces, including the /phase-plan scratch repo
+    '.superpowers/**',
   ]),
   js.configs.recommended,
   tseslint.configs.recommended,
@@ -35,6 +37,7 @@ export default defineConfig([
       'packages/**/*.ts',
       'e2e/**/*.ts',
       'scripts/**/*.{js,mjs}',
+      '.claude/**/*.{js,mjs}',
       '*.config.{js,ts}',
       '*.{js,mjs}',
     ],

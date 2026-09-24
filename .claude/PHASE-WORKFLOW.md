@@ -1,32 +1,36 @@
 # BizScout phase workflow
 
-Each phase plan in `docs/superpowers/plans/` goes through four steps. Nothing is committed until step 4.
+Step 0 turns requirements into a roadmap and phase plans in `docs/superpowers/plans/`. Each phase plan then goes through four steps. Nothing is committed until step 4.
 
-| Step            | You type                                     | Runs on                                                                                            | What happens                                                                                                                                                                                                       |
-| --------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1. Implement    | `/phase-implement 4`                         | Controller: Sonnet 5 at Max (skill override). Workers: `phase-implementer` agents, Sonnet 5 at Max | Creates branch `phase/04-…` from `main`, does any carry-forward items for the phase, then implements every task with one fresh agent per task (TDD, plan code verbatim, no commits), runs all gates and summarises |
-| 2. Review + fix | `/phase-review 4`                            | Controller: Opus 5.5 at Max (skill override). Worker: the `phase-reviewer` agent, Opus 5.5 at Max  | Built-in `/code-review max --fix` for correctness, then a whole-phase review that fixes code, docs and later plans; re-runs the gates, checks the UI in the browser for web phases, and opens the diff pane        |
-| 3. Your review  | Plain chat                                   | Whatever the model picker says                                                                     | You read the diff pane and ask for changes; Claude applies them, re-runs the gates and shows the diff again                                                                                                        |
-| 4. Commit       | `/phase-commit 4` or `/phase-commit 4 split` | Picker model                                                                                       | Runs the gates, stages explicit paths only, commits (one commit, or split by area), merges into `main` with `--no-ff`, ticks carry-forward items and deletes the phase workspace. It never pushes.                 |
+| Step            | You type                                                     | Runs on                                                                                            | What happens                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0. Plan         | `/phase-plan brief.pdf` or `/phase-plan <requirements text>` | Controller: Opus 5.5 at Max (skill override). Workers: `phase-planner` agents, Opus 5.5 at Max     | Extracts every requirement with an ID, asks you the few decisions that are yours (optional tracks, scope, anything paid), checks current versions and service limits, writes the roadmap and stops for your OK. Then one agent per phase writes the plan and runs its code in a scratch repo, fixing the plan until everything passes. Finishes with a cross-plan review. In a repo that already has plans, new phases continue the numbering and the roadmap is updated. |
+| 1. Implement    | `/phase-implement 4`                                         | Controller: Sonnet 5 at Max (skill override). Workers: `phase-implementer` agents, Sonnet 5 at Max | Creates branch `phase/04-…` from `main`, does any carry-forward items for the phase, then implements every task with one fresh agent per task (TDD, plan code verbatim, no commits), runs all gates and summarises                                                                                                                                                                                                                                                        |
+| 2. Review + fix | `/phase-review 4`                                            | Controller: Opus 5.5 at Max (skill override). Worker: the `phase-reviewer` agent, Opus 5.5 at Max  | Built-in `/code-review max --fix` for correctness, then a whole-phase review that fixes code, docs and later plans; re-runs the gates, checks the UI in the browser for web phases, and opens the diff pane                                                                                                                                                                                                                                                               |
+| 3. Your review  | Plain chat                                                   | Whatever the model picker says                                                                     | You read the diff pane and ask for changes; Claude applies them, re-runs the gates and shows the diff again                                                                                                                                                                                                                                                                                                                                                               |
+| 4. Commit       | `/phase-commit 4` or `/phase-commit 4 split`                 | Picker model                                                                                       | Runs the gates, stages explicit paths only, commits (one commit, or split by area), merges into `main` with `--no-ff`, ticks carry-forward items and deletes the phase workspace. It never pushes.                                                                                                                                                                                                                                                                        |
 
 ## Tips
 
 - **Start each phase in a new session.** Context stays small, and the skills keep their state in files anyway.
 - **Agents load automatically.** Claude Code watches `.claude/agents/` and `.claude/skills/`, so edits apply within seconds. If a dispatch says `phase-implementer` isn't available, start a new session.
-- **Set the model picker too.** A skill's `model` and `effort` apply only to the turn that runs it. If a step is interrupted (usage limit, a question for you) and you resume with plain chat, the picker's model takes over. Choose Sonnet 5 / Max for step 1 and Opus 5.5 / Max for step 2.
+- **Set the model picker too.** A skill's `model` and `effort` apply only to the turn that runs it. If a step is interrupted (usage limit, a question for you) and you resume with plain chat, the picker's model takes over. Choose Opus 5.5 / Max for steps 0 and 2, and Sonnet 5 / Max for step 1.
 - **Optional extra review.** Before step 2, type `/code-review ultra`. It's a deep multi-agent review in the cloud; only you can start it, and it's billed separately. `/phase-review` then applies its findings.
-- **Resuming after an interruption.** Run the same command again. Progress is tracked in `.superpowers/phase-cycle/phase-N/progress.md`, and finished tasks are skipped.
+- **Resuming after an interruption.** Run the same command again. Progress is tracked in `.superpowers/phase-cycle/phase-N/progress.md` (and `.superpowers/phase-plan/<date>-<project>/progress.md` for step 0), and finished work is skipped.
+- **Requirements input for step 0.** Give a file path (PDF, Markdown, text, Word), a URL, or type the requirements after the command. Text after a file path counts as extra instructions, e.g. `/phase-plan brief.pdf use Neon for the database`. With no input, it lists candidate files and asks.
 - **Accounts and secrets.** Steps that need your accounts or secrets (Phase 5 hosting, Phase 8 submission) are never done for you; they're listed as "pending user action".
 
 ## Setup and tear-down lifecycle
 
-| Resource                                                                              | Set up by                                                                                        | Torn down by                                                                                              | Why then                                                                                                                                             |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Docker services: Postgres (:55432) and go-httpbin (:8080), compose project `bizscout` | `start-services.sh` at the start of every step (safe to repeat; starts Docker Desktop if needed) | `stop-services.sh` (`docker compose down`) at the end of `/phase-commit`, unless you ask to keep them     | Steps 1–3 all need them, and so does applying your review requests; the cycle ends at commit. Database data is kept in the `bizscout_pgdata` volume. |
-| Dev servers, watchers, test runners (tsx, vite, vitest, Playwright)                   | Agents and browser checks, during a step                                                         | `cleanup-processes.sh` at the end of every step and before any early stop; each agent also runs it itself | They're only needed inside a step, and a stray server blocks ports (4000, 5173, 4100, 4173) for the next step                                        |
-| Phase branch `phase/0N-…`                                                             | `/phase-implement`                                                                               | Never deleted automatically; merged by `/phase-commit`                                                    | Deleting a branch is your call                                                                                                                       |
-| Workspace `.superpowers/phase-cycle/phase-N/` (briefs, reports, ledger)               | `/phase-implement`                                                                               | `/phase-commit` after a successful merge                                                                  | It's the resume point and review input until then                                                                                                    |
-| Uncommitted changes                                                                   | Steps 1–3                                                                                        | Committed by `/phase-commit`                                                                              | Your approval is the commit                                                                                                                          |
+| Resource                                                                                                         | Set up by                                                                                        | Torn down by                                                                                              | Why then                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Docker services: Postgres (:55432) and go-httpbin (:8080), compose project `bizscout`                            | `start-services.sh` at the start of every step (safe to repeat; starts Docker Desktop if needed) | `stop-services.sh` (`docker compose down`) at the end of `/phase-commit`, unless you ask to keep them     | Steps 1–3 all need them, and so does applying your review requests; the cycle ends at commit. Database data is kept in the `bizscout_pgdata` volume. |
+| Dev servers, watchers, test runners (tsx, vite, vitest, Playwright)                                              | Agents and browser checks, during a step                                                         | `cleanup-processes.sh` at the end of every step and before any early stop; each agent also runs it itself | They're only needed inside a step, and a stray server blocks ports (4000, 5173, 4100, 4173) for the next step                                        |
+| Phase branch `phase/0N-…`                                                                                        | `/phase-implement`                                                                               | Never deleted automatically; merged by `/phase-commit`                                                    | Deleting a branch is your call                                                                                                                       |
+| Workspace `.superpowers/phase-cycle/phase-N/` (briefs, reports, ledger)                                          | `/phase-implement`                                                                               | `/phase-commit` after a successful merge                                                                  | It's the resume point and review input until then                                                                                                    |
+| Planning workspace `.superpowers/phase-plan/<date>-<project>/` (requirements, research, ledger, planner reports) | `/phase-plan`                                                                                    | Kept after planning; delete it yourself when you no longer need the notes                                 | It's the resume point and the record of what was verified                                                                                            |
+| Planning scratch repo `…/scratch` and its Docker project `<project>-plan`                                        | `/phase-plan`, step 6                                                                            | `/phase-plan` at the end (`down -v`, then `rm -rf`); processes also by `cleanup-processes.sh`             | It exists only to run the plans' code                                                                                                                |
+| Uncommitted changes                                                                                              | Steps 1–3                                                                                        | Committed by `/phase-commit`                                                                              | Your approval is the commit                                                                                                                          |
 
 Failure paths keep what you need to retry. If gates, the commit or the merge fail, only stray processes are cleaned up; services, workspace and changes stay.
 
@@ -56,19 +60,23 @@ docker compose logs -f postgres                           # follow a service's l
 
 ## Where things live
 
-| Path                                      | What it is                                                                                                                     |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `.claude/skills/phase-implement/SKILL.md` | Step 1 instructions                                                                                                            |
-| `.claude/skills/phase-review/SKILL.md`    | Step 2 instructions                                                                                                            |
-| `.claude/skills/phase-commit/SKILL.md`    | Step 4 instructions                                                                                                            |
-| `.claude/agents/phase-implementer.md`     | Per-task implementer: model, effort, system prompt                                                                             |
-| `.claude/agents/phase-reviewer.md`        | Whole-phase reviewer and fixer: model, effort, system prompt                                                                   |
-| `.claude/phase-workflow/ENVIRONMENT.md`   | Shared rules: Docker services, gates, git rules, code conventions                                                              |
-| `.claude/phase-workflow/CARRY-FORWARD.md` | Decisions and fixes that outlive a phase; the skills read and update it                                                        |
-| `.claude/phase-workflow/scripts/*.sh`     | `start-services`, `stop-services`, `cleanup-processes`, `gates`, `phase-info`, `task-brief`, `phase-context`, `review-package` |
-| `docker-compose.yml` (repo root)          | The Docker services themselves (Postgres, go-httpbin), shared with the plans                                                   |
-| `.claude/launch.json`                     | `api` and `web` dev-server configs for the browser pane                                                                        |
-| `.superpowers/phase-cycle/phase-N/`       | Per-phase briefs, reports, ledger, summaries (git-ignored; deleted by `/phase-commit`)                                         |
+| Path                                                   | What it is                                                                                                                     |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `.claude/skills/phase-plan/SKILL.md`                   | Step 0 instructions                                                                                                            |
+| `.claude/skills/phase-implement/SKILL.md`              | Step 1 instructions                                                                                                            |
+| `.claude/skills/phase-review/SKILL.md`                 | Step 2 instructions                                                                                                            |
+| `.claude/skills/phase-commit/SKILL.md`                 | Step 4 instructions                                                                                                            |
+| `.claude/agents/phase-planner.md`                      | Per-phase plan writer and validator: model, effort, system prompt, and the rules every plan follows                            |
+| `.claude/agents/phase-implementer.md`                  | Per-task implementer: model, effort, system prompt                                                                             |
+| `.claude/agents/phase-reviewer.md`                     | Whole-phase reviewer and fixer: model, effort, system prompt                                                                   |
+| `.claude/phase-workflow/ENVIRONMENT.md`                | Shared rules: Docker services, gates, git rules, code conventions                                                              |
+| `.claude/phase-workflow/CARRY-FORWARD.md`              | Decisions and fixes that outlive a phase; the skills read and update it                                                        |
+| `.claude/phase-workflow/scripts/*.sh`                  | `start-services`, `stop-services`, `cleanup-processes`, `gates`, `phase-info`, `task-brief`, `phase-context`, `review-package` |
+| `.claude/phase-workflow/scripts/extract-plan-code.mjs` | Writes a plan's full-file code blocks into a folder (`--list` to preview); `/phase-plan` uses it to run plans                  |
+| `docker-compose.yml` (repo root)                       | The Docker services themselves (Postgres, go-httpbin), shared with the plans                                                   |
+| `.claude/launch.json`                                  | `api` and `web` dev-server configs for the browser pane                                                                        |
+| `.superpowers/phase-plan/<date>-<project>/`            | Step 0 workspace (git-ignored)                                                                                                 |
+| `.superpowers/phase-cycle/phase-N/`                    | Per-phase briefs, reports, ledger, summaries (git-ignored; deleted by `/phase-commit`)                                         |
 
 `.claude/` is committed: the skills, agents, scripts and docs are part of the repo. `.claude/settings.local.json` holds your personal permissions and stays out of git. `/phase-commit` commits `CARRY-FORWARD.md` with each phase; commit other changes under `.claude/` on their own, or tell `/phase-commit` to include them.
 
@@ -101,9 +109,9 @@ Other useful frontmatter fields:
 
 Edit the numbered steps in the `SKILL.md`. Useful fields:
 
-- `arguments: [phase]` makes `$phase` available in the text; `/phase-commit` also uses `$mode`.
+- `arguments: [phase]` makes `$phase` available in the text; `/phase-commit` also uses `$mode`. `/phase-plan` uses `$ARGUMENTS`, the whole input as typed.
 - `argument-hint:` controls the autocomplete hint.
-- `disable-model-invocation: true` means only you can trigger the skill; Claude never runs it on its own. Keep this for all three skills.
+- `disable-model-invocation: true` means only you can trigger the skill; Claude never runs it on its own. Keep this for all four skills.
 - `allowed-tools:` lists tools that run without a permission prompt during the skill, for example `phase-commit`'s git commands.
 
 Some example changes:
@@ -111,7 +119,24 @@ Some example changes:
 - **Stop between tasks for your approval:** in `phase-implement/SKILL.md` step 2, add "after each task, stop and wait for the user's go-ahead".
 - **Skip the built-in code review:** delete step 1 of `phase-review/SKILL.md`.
 - **Different commit style:** edit section 3 of `phase-commit/SKILL.md` (subject format, trailers, default mode).
-- **Push after merging:** add a step to `phase-commit`, but only once a remote exists; this workflow never pushes by default.
+- **Push after merging:** add a step to `phase-commit`. The GitHub remote `origin` exists, but this workflow never pushes by default.
+- **No roadmap checkpoint:** in `phase-plan/SKILL.md` step 5, drop the checkpoint question so planning runs straight through.
+- **Plan without validation:** in `phase-plan/SKILL.md` step 6, tell the planners to skip "Prove it in the scratch repo". It's faster and cheaper, but the plans' code is then unverified.
+
+### Change how plans are written
+
+Every plan follows the "What the plan must contain" list in `.claude/agents/phase-planner.md`. Edit that list to change plan structure, for example "every task lists its manual test steps". The roadmap's sections are listed in step 5 of `phase-plan/SKILL.md`. Keep the `### Task N:` headings, the `` `path`: `` code-block labels and the `YYYY-MM-DD-<project>-NN-<slug>.md` file names: `/phase-implement`, the extractor and `phase-info.sh` depend on them.
+
+### Use the workflow in another project
+
+1. Copy `.claude/skills/`, `.claude/agents/`, `.claude/phase-workflow/` and `.claude/PHASE-WORKFLOW.md`, leaving out `CARRY-FORWARD.md` (start a fresh one).
+2. Adapt the project-specific parts:
+   - `ENVIRONMENT.md`: services, ports, env vars, code conventions;
+   - `start-services.sh` and `stop-services.sh`: the compose project;
+   - `gates.sh`: the commands and the service check;
+   - `cleanup-processes.sh`: the process names;
+   - `launch.json`.
+3. Run `/phase-plan <requirements>`. In an empty repo it plans from phase 01.
 
 ### Add a quality gate
 
@@ -127,5 +152,5 @@ Create `.claude/skills/<name>/SKILL.md` with `name` and `description` frontmatte
 
 ### Check that everything loaded
 
-- Type `/phase-` and all three commands should autocomplete.
-- In an interactive terminal session, `/agents` lists `phase-implementer` and `phase-reviewer`. In the desktop app, just start a phase: the first dispatch fails loudly if an agent isn't loaded.
+- Type `/phase-` and all four commands should autocomplete.
+- In an interactive terminal session, `/agents` lists `phase-planner`, `phase-implementer` and `phase-reviewer`. In the desktop app, just start a phase: the first dispatch fails loudly if an agent isn't loaded.

@@ -1,7 +1,7 @@
 ---
 name: phase-review
 description: Step 2 of the BizScout phase cycle. Reviews the uncommitted phase changes and fixes issues in code and docs with Opus 5.5 at max effort (built-in code review + the phase-reviewer agent), then hands over to the user for manual review.
-argument-hint: <phase number 1-8>
+argument-hint: <phase number>
 arguments: [phase]
 disable-model-invocation: true
 model: claude-opus-5-5

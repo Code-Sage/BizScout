@@ -1,7 +1,7 @@
 ---
 name: phase-implement
 description: Step 1 of the BizScout phase cycle. Implements one phase plan task by task with the phase-implementer agent (Sonnet 5, max effort) on a phase branch, leaving every change uncommitted for review.
-argument-hint: <phase number 1-8>
+argument-hint: <phase number>
 arguments: [phase]
 disable-model-invocation: true
 model: claude-sonnet-5

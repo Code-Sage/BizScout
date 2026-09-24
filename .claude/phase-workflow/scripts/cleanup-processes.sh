@@ -6,7 +6,8 @@
 set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
-pattern="$REPO/(apps|e2e|packages|node_modules)/.*(tsx|vite|vitest|playwright)"
+# The second branch covers the /phase-plan scratch repo under .superpowers/phase-plan/.
+pattern="$REPO/((apps|e2e|packages|node_modules)/.*(tsx|vite|vitest|playwright)|\.superpowers/.*(node|tsx|vite|vitest|playwright))"
 
 pids="$(pgrep -f "$pattern" || true)"
 if [ -z "$pids" ]; then

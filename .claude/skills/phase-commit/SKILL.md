@@ -1,7 +1,7 @@
 ---
 name: phase-commit
 description: Step 4 of the BizScout phase cycle. After the user's manual review, commits the approved phase (one commit, or split by area) and merges it into main locally. Never pushes.
-argument-hint: <phase number 1-8> [single|split]
+argument-hint: <phase number> [single|split]
 arguments: [phase, mode]
 disable-model-invocation: true
 allowed-tools: Bash(git status *) Bash(git diff *) Bash(git add *) Bash(git commit *) Bash(git log *) Bash(git switch *) Bash(git merge *) Bash(git rev-parse *) Bash(git ls-files *)
