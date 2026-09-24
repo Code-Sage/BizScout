@@ -20,7 +20,7 @@ export function LiveIndicator() {
         aria-hidden="true"
         className={clsx(
           'size-2.5 rounded-full',
-          status === 'open' && 'animate-pulse bg-emerald-500',
+          status === 'open' && 'motion-safe:animate-pulse bg-emerald-500',
           (status === 'connecting' || status === 'reconnecting') && 'bg-amber-500',
           status === 'closed' && 'bg-slate-400',
         )}
