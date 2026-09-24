@@ -25,3 +25,6 @@ blob-report/
 
 # private brief from BizScout — never commit
 BizScout - Take Home Test*.pdf
+
+# planning docs: kept locally for now, committed deliberately later
+docs/superpowers/

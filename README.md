@@ -15,6 +15,10 @@ cp apps/api/.env.example apps/api/.env
 pnpm --filter @bizscout/api dev
 ```
 
+If something already listens on 5432 (e.g. a Homebrew Postgres), either stop it or run
+`POSTGRES_PORT=55432 docker compose up -d --wait` and point `DATABASE_URL` / `DATABASE_URL_TEST`
+at port 55432 instead.
+
 ## Documentation
 
 | Doc                    | What's inside                                   |

@@ -7,8 +7,39 @@ export const notFoundHandler: RequestHandler = (req, _res, next) => {
   next(new NotFoundError(`Route ${req.method} ${req.path} not found`));
 };
 
-function isBodyParserError(err: unknown): boolean {
-  return err instanceof SyntaxError && typeof (err as { status?: unknown }).status === 'number';
+/**
+ * body-parser (and other middleware built on `http-errors`) throws errors with
+ * `expose: true` and a 4xx `status` for client mistakes — bad JSON, oversized
+ * bodies, unsupported encodings. Anything else is ours to treat as a 500.
+ */
+interface ClientError {
+  status: number;
+  type?: string;
+}
+
+function isClientError(err: unknown): err is ClientError {
+  if (!(err instanceof Error)) return false;
+  const candidate = err as { expose?: unknown; status?: unknown };
+  return (
+    candidate.expose === true &&
+    typeof candidate.status === 'number' &&
+    candidate.status >= 400 &&
+    candidate.status < 500
+  );
+}
+
+function classifyClientError(err: ClientError): { code: string; message: string } {
+  switch (err.type) {
+    case 'entity.parse.failed':
+      return { code: 'INVALID_JSON', message: 'Request body is not valid JSON' };
+    case 'entity.too.large':
+      return { code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large' };
+    case 'encoding.unsupported':
+    case 'charset.unsupported':
+      return { code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Unsupported content encoding or charset' };
+    default:
+      return { code: 'BAD_REQUEST', message: 'Request could not be processed' };
+  }
 }
 
 export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
@@ -33,7 +64,9 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   }
 
   if (err instanceof AppError) {
-    if (err.statusCode >= 500) req.log.error({ err }, err.message);
+    // Let pino-http's own completion log carry the real error instead of
+    // logging it here too (it reads `res.err`; see http-logger's customLogLevel).
+    if (err.statusCode >= 500) res.err = err;
     send(err.statusCode, {
       code: err.code,
       message: err.message,
@@ -42,11 +75,11 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     return;
   }
 
-  if (isBodyParserError(err)) {
-    send(400, { code: 'INVALID_JSON', message: 'Request body is not valid JSON' });
+  if (isClientError(err)) {
+    send(err.status, classifyClientError(err));
     return;
   }
 
-  req.log.error({ err }, 'unhandled error');
+  res.err = err instanceof Error ? err : undefined;
   send(500, { code: 'INTERNAL_ERROR', message: 'Something went wrong' });
 };

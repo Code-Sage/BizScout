@@ -17,7 +17,11 @@ async function main(): Promise<void> {
   const logger = createLogger({ level: env.LOG_LEVEL, pretty: env.NODE_ENV === 'development' });
   const app = createApp({ logger, corsOrigins: env.CORS_ORIGINS });
 
-  const server = app.listen(env.PORT, () => {
+  const server = app.listen(env.PORT, (error?: Error) => {
+    if (error) {
+      logger.fatal({ err: error }, 'failed to bind port');
+      process.exit(1);
+    }
     logger.info({ port: env.PORT, version: env.APP_VERSION }, 'api listening');
   });
 
