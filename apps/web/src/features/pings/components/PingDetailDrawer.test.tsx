@@ -1,10 +1,24 @@
 import { screen } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { makePingDetail } from '../../../test/fixtures';
 import { renderWithClient } from '../../../test/render';
 import { API, server } from '../../../test/server';
 import { PingDetailDrawer } from './PingDetailDrawer';
+
+/** Minimal harness: a trigger button that opens the drawer, like a table row would. */
+function Harness({ id }: { id: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen(true)}>
+        {`Open ping ${id}`}
+      </button>
+      {open && <PingDetailDrawer id={id} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
 
 describe('PingDetailDrawer', () => {
   it('shows the request payload and response for the ping', async () => {
@@ -52,5 +66,46 @@ describe('PingDetailDrawer', () => {
     );
     renderWithClient(<PingDetailDrawer id={5} onClose={vi.fn()} />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Ping 5 not found');
+  });
+
+  it('returns focus to the element that opened it, once it unmounts', async () => {
+    server.use(http.get(`${API}/api/pings/5`, () => HttpResponse.json(makePingDetail({ id: 5 }))));
+    const { user } = renderWithClient(<Harness id={5} />);
+
+    const trigger = screen.getByRole('button', { name: 'Open ping 5' });
+    await user.click(trigger);
+    expect(await screen.findByRole('button', { name: 'Close' })).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('traps Tab within the dialog, cycling between its focusable elements', async () => {
+    server.use(
+      http.get(`${API}/api/pings/5`, () =>
+        HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Ping 5 not found' } },
+          { status: 404 },
+        ),
+      ),
+    );
+    const { user } = renderWithClient(<Harness id={5} />);
+    await user.click(screen.getByRole('button', { name: 'Open ping 5' }));
+
+    const closeButton = await screen.findByRole('button', { name: 'Close' });
+    expect(closeButton).toHaveFocus();
+    await screen.findByRole('alert');
+    const retryButton = screen.getByRole('button', { name: 'Try again' });
+
+    // Forward from the last focusable element wraps to the first.
+    await user.tab();
+    expect(retryButton).toHaveFocus();
+    await user.tab();
+    expect(closeButton).toHaveFocus();
+
+    // Backward from the first focusable element wraps to the last.
+    await user.tab({ shift: true });
+    expect(retryButton).toHaveFocus();
   });
 });

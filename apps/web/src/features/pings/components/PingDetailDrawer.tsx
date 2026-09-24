@@ -12,17 +12,47 @@ interface PingDetailDrawerProps {
   onClose: () => void;
 }
 
+// Elements a Tab press can land on, for the focus trap below.
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function PingDetailDrawer({ id, onClose }: PingDetailDrawerProps) {
   const query = usePingDetail(id);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    const previouslyFocused = document.activeElement;
     closeButton.current?.focus();
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !panel.current) return;
+
+      const focusable = panel.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      if (previouslyFocused instanceof HTMLElement && document.contains(previouslyFocused)) {
+        previouslyFocused.focus();
+      }
+    };
   }, [onClose]);
 
   return (
@@ -34,6 +64,7 @@ export function PingDetailDrawer({ id, onClose }: PingDetailDrawerProps) {
         className="absolute inset-0 cursor-default bg-slate-900/30"
       />
       <aside
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby="ping-detail-title"
