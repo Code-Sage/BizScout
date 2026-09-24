@@ -103,6 +103,12 @@ describe('PingRepository.list', () => {
     });
     expect(page.rows.map((row) => row.id)).toEqual([4, 3, 2]);
   });
+
+  it('projects payloadEvent as null when the event field is not a string, matching summarizeRow', async () => {
+    const inserted = await repo.insert(buildPingRow({ requestPayload: { event: 42 } }));
+    const page = await repo.list({ limit: 10, status: 'all' });
+    expect(page.rows.find((row) => row.id === inserted?.id)?.payloadEvent).toBeNull();
+  });
 });
 
 describe('PingRepository.listAfter', () => {

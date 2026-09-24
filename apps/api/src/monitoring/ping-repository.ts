@@ -16,7 +16,10 @@ const summaryColumns = {
   responseSizeBytes: pingResults.responseSizeBytes,
   errorCode: pingResults.errorCode,
   errorMessage: pingResults.errorMessage,
-  payloadEvent: sql<string | null>`${pingResults.requestPayload} ->> 'event'`,
+  // Matches summarizeRow(): only a string `event` is projected, never a stringified number/object.
+  payloadEvent: sql<
+    string | null
+  >`case when jsonb_typeof(${pingResults.requestPayload} -> 'event') = 'string' then ${pingResults.requestPayload} ->> 'event' end`,
 };
 
 export type PingSummaryRow = Pick<
