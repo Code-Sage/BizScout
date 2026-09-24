@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -56,6 +57,44 @@ describe('SegmentedControl', () => {
 
     await userEvent.click(screen.getByRole('radio', { name: '24h' }));
     expect(onChange).toHaveBeenCalledWith('24h');
+  });
+
+  it('implements WAI-ARIA radio group keyboard pattern', async () => {
+    function StatefulSegmentedControl() {
+      const [value, setValue] = React.useState<'a' | 'b' | 'c'>('a');
+      return (
+        <SegmentedControl
+          label="Options"
+          options={['a', 'b', 'c'] as const}
+          value={value}
+          onChange={setValue}
+        />
+      );
+    }
+
+    render(<StatefulSegmentedControl />);
+
+    // Only the checked option has tabIndex 0
+    const radioA = screen.getByRole('radio', { name: 'a' });
+    const radioB = screen.getByRole('radio', { name: 'b' });
+    const radioC = screen.getByRole('radio', { name: 'c' });
+
+    expect(radioA).toHaveAttribute('tabindex', '0');
+    expect(radioB).toHaveAttribute('tabindex', '-1');
+    expect(radioC).toHaveAttribute('tabindex', '-1');
+
+    // Focus the checked option and press ArrowRight
+    radioA.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(radioB).toHaveAttribute('tabindex', '0');
+    expect(radioB).toHaveFocus();
+
+    // Press ArrowLeft twice to wrap to 'c'
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(radioA).toHaveAttribute('tabindex', '0');
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(radioC).toHaveAttribute('tabindex', '0');
+    expect(radioC).toHaveFocus();
   });
 });
 
