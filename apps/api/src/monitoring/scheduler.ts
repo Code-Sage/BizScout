@@ -34,7 +34,9 @@ export interface SlotSchedulerOptions {
 /**
  * Fires `job` at wall-clock slot boundaries (10:00, 10:05, ...) rather than "every N ms since
  * boot". Aligned slots make the slot a natural idempotency key shared with the external cron.
- * The next run is scheduled only after the current one settles, so runs never overlap.
+ * The next scheduled run starts only after the current one settles, so scheduled runs never
+ * overlap each other. The `runOnStart` catch-up run fires outside that chain and may overlap
+ * the first scheduled run, so `job` must tolerate concurrent runs for distinct slots.
  */
 export class SlotScheduler {
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -67,6 +69,7 @@ export class SlotScheduler {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.nextRunAt = null;
+    this.lastScheduledSlot = 0;
   }
 
   status(): SchedulerStatus {

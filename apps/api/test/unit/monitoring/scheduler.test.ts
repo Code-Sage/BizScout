@@ -95,6 +95,23 @@ describe('SlotScheduler', () => {
     expect(scheduler.status()).toMatchObject({ running: false, nextRunAt: null });
   });
 
+  it('re-arms for the same upcoming boundary after stop() and restart before it fires', async () => {
+    const job = vi.fn().mockResolvedValue(undefined);
+    const { scheduler } = build(job);
+
+    scheduler.start();
+    await vi.advanceTimersByTimeAsync(30_000); // 10:03:00, still before the 10:05:00 boundary
+    scheduler.stop();
+
+    await vi.advanceTimersByTimeAsync(30_000); // 10:03:30
+    scheduler.start();
+    expect(scheduler.status().nextRunAt).toBe('2026-09-24T10:05:00.000Z');
+
+    await vi.advanceTimersByTimeAsync(90_000); // reach 10:05:00
+    expect(job).toHaveBeenCalledExactlyOnceWith(new Date('2026-09-24T10:05:00.000Z'));
+    scheduler.stop();
+  });
+
   it('start() is idempotent', async () => {
     const job = vi.fn().mockResolvedValue(undefined);
     const { scheduler } = build(job);
