@@ -1,6 +1,5 @@
 import { loadEnv } from './config/env';
-import { createApp } from './http/app';
-import { createLogger } from './lib/logger';
+import { createContainer } from './container';
 
 function loadDotEnvFile(): void {
   try {
@@ -14,21 +13,41 @@ async function main(): Promise<void> {
   if (process.env.NODE_ENV !== 'production') loadDotEnvFile();
 
   const env = loadEnv();
-  const logger = createLogger({ level: env.LOG_LEVEL, pretty: env.NODE_ENV === 'development' });
-  const app = createApp({ logger, corsOrigins: env.CORS_ORIGINS });
+  const container = await createContainer(env);
+  const { app, logger } = container;
 
-  const server = app.listen(env.PORT, (error?: Error) => {
+  process.on('unhandledRejection', (reason) =>
+    logger.error({ err: reason }, 'unhandled rejection'),
+  );
+
+  const server = app.listen(env.PORT, (error) => {
     if (error) {
+      // e.g. EADDRINUSE: fail loudly instead of running the scheduler without an HTTP server.
       logger.fatal({ err: error }, 'failed to bind port');
       process.exit(1);
     }
     logger.info({ port: env.PORT, version: env.APP_VERSION }, 'api listening');
+    container.start();
   });
 
+  let shuttingDown = false;
   const shutdown = (signal: NodeJS.Signals): void => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     logger.info({ signal }, 'shutting down');
-    server.close(() => process.exit(0));
     setTimeout(() => process.exit(1), 10_000).unref();
+    server.close();
+    // server.close() (not awaited) just stops accepting new connections; it does not wait for
+    // open SSE streams to end. container.stop() ends those streams and drains the pool, and we
+    // exit once that resolves, regardless of whether server.close()'s own callback has fired.
+    // The 10 s timer above forces an exit if that shutdown hangs.
+    container.stop().then(
+      () => process.exit(0),
+      (error: unknown) => {
+        logger.error({ err: error }, 'error during shutdown');
+        process.exit(1);
+      },
+    );
   };
   process.once('SIGTERM', shutdown);
   process.once('SIGINT', shutdown);

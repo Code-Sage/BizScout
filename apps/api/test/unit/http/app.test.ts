@@ -1,18 +1,30 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../../../src/http/app';
-import { createLogger } from '../../../src/lib/logger';
+import { buildAppDeps } from '../../support/app';
 
-const app = createApp({
-  logger: createLogger({ level: 'silent', pretty: false }),
-  corsOrigins: ['http://localhost:5173'],
-});
+const app = createApp(buildAppDeps());
 
 describe('createApp', () => {
-  it('responds to the health check', async () => {
+  it('reports healthy when the database answers', async () => {
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: 'ok' });
+    expect(res.body).toMatchObject({
+      status: 'ok',
+      database: 'up',
+      version: 'test',
+      scheduler: { enabled: false },
+      sseClients: 0,
+    });
+  });
+
+  it('reports degraded with 503 when the database is unreachable', async () => {
+    const degraded = createApp(
+      buildAppDeps({ checkDatabase: () => Promise.reject(new Error('down')) }),
+    );
+    const res = await request(degraded).get('/api/health');
+    expect(res.status).toBe(503);
+    expect(res.body).toMatchObject({ status: 'degraded', database: 'down' });
   });
 
   it('returns the error envelope for unknown routes', async () => {

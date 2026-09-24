@@ -24,5 +24,19 @@ at port 55432 instead.
 | Doc                    | What's inside                                   |
 | ---------------------- | ----------------------------------------------- |
 | `docs/REQUIREMENTS.md` | The brief paraphrased with requirement IDs      |
+| `docs/DATABASE.md`     | Database schema, entity diagram, indexing       |
 | `docs/adr/`            | Architecture decision records                   |
 | `docs/JOURNAL.md`      | Build journal: decisions, surprises, time spent |
+
+## API (backend)
+
+| Method | Path                                     | Purpose                                                     |
+| ------ | ---------------------------------------- | ----------------------------------------------------------- |
+| GET    | `/api/health`                            | Liveness + DB/scheduler status (503 when DB is down)        |
+| GET    | `/api/pings?limit&cursor&status&from&to` | History, newest first, keyset pagination                    |
+| GET    | `/api/pings/:id`                         | Full record incl. request payload and response body         |
+| GET    | `/api/pings/stats?window=1h\|24h\|7d`    | Counts, success rate, avg/p50/p95/p99/min/max               |
+| GET    | `/api/pings/series?window=…`             | Chart points                                                |
+| GET    | `/api/stream`                            | SSE: `ping.created` (supports `Last-Event-ID` replay)       |
+| POST   | `/api/internal/tick`                     | Idempotent slot ping for external cron (`x-internal-token`) |
+| POST   | `/api/internal/ping-now`                 | Manual ping (`x-internal-token`)                            |
