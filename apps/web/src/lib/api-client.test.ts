@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { API, server } from '../test/server';
@@ -60,5 +60,20 @@ describe('apiGet', () => {
       status: 0,
       code: 'NETWORK_ERROR',
     });
+  });
+
+  it('re-throws AbortError untouched instead of wrapping it in ApiError', async () => {
+    server.use(
+      http.get(`${API}/api/thing`, async () => {
+        await delay('infinite');
+        return HttpResponse.json({ value: 1 });
+      }),
+    );
+    const controller = new AbortController();
+    const promise = apiGet('/api/thing', schema, { signal: controller.signal });
+    controller.abort();
+    const error = await promise.catch((e: unknown) => e);
+    expect(error).not.toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ name: 'AbortError' });
   });
 });
