@@ -14,6 +14,9 @@ blob-report/
 .env.*
 !.env.example
 
+# personal Claude Code permissions (the rest of .claude/ is shared tooling)
+.claude/settings.local.json
+
 # OS / editors
 .DS_Store
 .idea/
