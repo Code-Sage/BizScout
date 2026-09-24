@@ -67,7 +67,7 @@ export const randomPayloadSchema = z
   .object({
     requestId: hexId('req'),
     event: z.enum(EVENTS),
-    emittedAt: z.string().datetime(),
+    emittedAt: z.iso.datetime(),
     actor: z.object({ id: hexId('usr'), role: z.enum(ROLES) }),
     listing: z.object({
       id: hexId('lst'),
