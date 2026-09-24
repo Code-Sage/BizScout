@@ -84,6 +84,13 @@ export class SlotScheduler {
   }
 
   private scheduleNext(): void {
+    // A previous in-flight run's `.finally` can call back in here while a timer it didn't
+    // arm is already pending (e.g. stop() -> start() while that run was still in flight);
+    // clear it first so we never have two live chains racing each other.
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
     if (!this.running) return;
     const now = this.now();
     // Guard against a timer that fires a hair early re-scheduling the slot it just ran.
@@ -94,7 +101,11 @@ export class SlotScheduler {
     this.lastScheduledSlot = nextMs;
     this.nextRunAt = new Date(nextMs);
     this.timer = setTimeout(() => {
-      void this.fire(new Date(nextMs)).finally(() => this.scheduleNext());
+      // Defense in depth: if a leaked timer ever did fire after stop(), don't run the job.
+      if (!this.running) return;
+      void this.fire(new Date(nextMs)).finally(() => {
+        if (this.running) this.scheduleNext();
+      });
     }, nextMs - now);
   }
 

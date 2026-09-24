@@ -123,4 +123,37 @@ describe('SlotScheduler', () => {
     expect(job).toHaveBeenCalledTimes(1);
     scheduler.stop();
   });
+
+  it('does not let a timer armed during stop()+start() of an in-flight run fire a job after the final stop()', async () => {
+    let resolveJob: (() => void) | undefined;
+    const job = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveJob = resolve;
+        }),
+    );
+    const { scheduler } = build(job);
+
+    scheduler.start();
+    // Reach the 10:05:00 boundary: the job fires and stays pending (in flight).
+    await vi.advanceTimersByTimeAsync(150_000);
+    expect(job).toHaveBeenCalledTimes(1);
+
+    // stop() + start() while that run is still in flight arms a second timer (for 10:10:00)
+    // that the in-flight run's own `.finally` doesn't know about.
+    scheduler.stop();
+    scheduler.start();
+
+    // Let the still-in-flight 10:05:00 run settle now, while the scheduler is running again:
+    // its `.finally` calls back into scheduleNext(), which must not leak the 10:10:00 timer.
+    resolveJob?.();
+    await vi.advanceTimersByTimeAsync(0);
+
+    scheduler.stop(); // the final stop()
+
+    // Advance past several more boundaries. A leaked timer would fire the job again here.
+    await vi.advanceTimersByTimeAsync(5 * FIVE_MIN);
+
+    expect(job).toHaveBeenCalledTimes(1);
+  });
 });

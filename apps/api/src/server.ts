@@ -37,7 +37,10 @@ async function main(): Promise<void> {
     logger.info({ signal }, 'shutting down');
     setTimeout(() => process.exit(1), 10_000).unref();
     server.close();
-    // stop() ends open SSE streams, which lets server.close() complete, then drains the pool.
+    // server.close() (not awaited) just stops accepting new connections; it does not wait for
+    // open SSE streams to end. container.stop() ends those streams and drains the pool, and we
+    // exit once that resolves, regardless of whether server.close()'s own callback has fired.
+    // The 10 s timer above forces an exit if that shutdown hangs.
     container.stop().then(
       () => process.exit(0),
       (error: unknown) => {
