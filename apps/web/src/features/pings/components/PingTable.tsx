@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { useMemo } from 'react';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
+import { RefreshError } from '../../../components/RefreshError';
 import { Skeleton } from '../../../components/Skeleton';
 import { formatBytes, formatClock, formatDateTime } from '../../../lib/format';
 import { usePings } from '../hooks';
@@ -35,7 +36,10 @@ export function PingTable({ status, onSelect }: PingTableProps) {
     );
   }
 
-  if (query.isError) {
+  // A failed background refetch also sets isError, even though `data` (and so `rows`) is still
+  // the last good response (TanStack v5). Only fall back to the full-panel error when nothing is
+  // cached yet.
+  if (query.data === undefined) {
     return (
       <ErrorState
         title="Couldn't load responses"
@@ -60,6 +64,11 @@ export function PingTable({ status, onSelect }: PingTableProps) {
 
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      {query.isError && !query.isFetchNextPageError && (
+        <div className="border-b border-slate-100 p-3">
+          <RefreshError onRetry={() => void query.refetch()} />
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <caption className="sr-only">Monitoring responses, newest first</caption>
@@ -109,6 +118,7 @@ export function PingTable({ status, onSelect }: PingTableProps) {
                       <time dateTime={ping.requestedAt} title={formatDateTime(ping.requestedAt)}>
                         {formatClock(ping.requestedAt)}
                       </time>
+                      <span className="sr-only">, view details for ping #{ping.id}</span>
                     </button>
                   </td>
                   <td className="px-4 py-3">
@@ -133,7 +143,7 @@ export function PingTable({ status, onSelect }: PingTableProps) {
         </table>
       </div>
       {query.hasNextPage && (
-        <div className="border-t border-slate-100 p-3 text-center">
+        <div className="space-y-2 border-t border-slate-100 p-3 text-center">
           <button
             type="button"
             onClick={() => void query.fetchNextPage()}
@@ -142,6 +152,12 @@ export function PingTable({ status, onSelect }: PingTableProps) {
           >
             {query.isFetchingNextPage ? 'Loading…' : 'Load older responses'}
           </button>
+          {query.isFetchNextPageError && (
+            <RefreshError
+              message="Couldn't load older responses"
+              onRetry={() => void query.fetchNextPage()}
+            />
+          )}
         </div>
       )}
     </div>

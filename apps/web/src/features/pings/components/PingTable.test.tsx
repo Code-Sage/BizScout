@@ -5,6 +5,7 @@ import { makePing } from '../../../test/fixtures';
 import { renderWithClient } from '../../../test/render';
 import { API, server } from '../../../test/server';
 import { applyPingToCache } from '../cache';
+import { pingKeys } from '../query-keys';
 import { PingTable } from './PingTable';
 
 const pingsHandler = (pages: Record<string, { ids: number[]; next: number | null }>) =>
@@ -74,6 +75,55 @@ describe('PingTable', () => {
     await user.click(within(row!).getByRole('button'));
 
     expect(onSelect).toHaveBeenCalledWith(7);
+  });
+
+  it('gives the row button an accessible name beyond the visible time', async () => {
+    server.use(pingsHandler({ first: { ids: [7], next: null } }));
+    renderWithClient(<PingTable status="all" onSelect={vi.fn()} />);
+
+    const [row] = await screen.findAllByTestId('ping-row');
+    expect(
+      within(row!).getByRole('button', { name: /view details for ping #7/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps rows visible and adds an inline notice when a background refresh fails', async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${API}/api/pings`, () => {
+        calls += 1;
+        return calls === 1
+          ? HttpResponse.json({ data: [makePing({ id: 1 })], nextCursor: null })
+          : HttpResponse.error();
+      }),
+    );
+    const { queryClient } = renderWithClient(<PingTable status="all" onSelect={vi.fn()} />);
+    expect(await screen.findAllByTestId('ping-row')).toHaveLength(1);
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: pingKeys.list('all') });
+    });
+
+    expect(screen.getAllByTestId('ping-row')).toHaveLength(1);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent("Couldn't refresh — showing the last loaded data");
+  });
+
+  it('keeps the first page and shows an inline error when loading older responses fails', async () => {
+    server.use(
+      http.get(`${API}/api/pings`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        if (!cursor) return HttpResponse.json({ data: [makePing({ id: 2 })], nextCursor: 2 });
+        return HttpResponse.error();
+      }),
+    );
+    const { user } = renderWithClient(<PingTable status="all" onSelect={vi.fn()} />);
+    await screen.findAllByTestId('ping-row');
+
+    await user.click(screen.getByRole('button', { name: 'Load older responses' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load older responses");
+    expect(screen.getAllByTestId('ping-row')).toHaveLength(1);
   });
 
   it('highlights rows that arrive live but not the initial ones', async () => {
