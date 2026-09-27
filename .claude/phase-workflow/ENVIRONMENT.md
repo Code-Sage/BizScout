@@ -28,7 +28,7 @@ Postgres on 5432.
   - E2E: `E2E_DATABASE_URL=postgres://bizscout:bizscout@localhost:55432/bizscout_test`
   - `apps/api/.env` (git-ignored) uses `DATABASE_URL=postgres://bizscout:bizscout@localhost:55432/bizscout`
   - Manual checks: `docker compose exec postgres psql -U bizscout -d bizscout`, or `psql "postgres://bizscout:bizscout@localhost:55432/bizscout"`
-- **No GitHub remote and no `gh` CLI.** Never push, never create PRs. CI workflows are written but can't be run.
+- **GitHub remote `origin` exists, but there's no `gh` CLI.** Agents never push or create PRs; the user pushes, and CI runs on GitHub then.
 - **Hosted services need the user's accounts** (Supabase, Render, Vercel, cron-job.org). Never create accounts or enter secrets.
 
 ## Gates
@@ -41,6 +41,8 @@ bash .claude/phase-workflow/scripts/gates.sh --e2e    # also Playwright, once th
 ```
 
 For focused runs, filter vitest by file-name fragment WITHOUT `--`, e.g. `pnpm --filter @bizscout/api test:unit ping-service`.
+
+When a gate fails, read its log (`/tmp/bizscout-gate-<name>.log`) with `tail -n 80` or `grep -n -iE 'error|fail'`, not in full: logs can be thousands of lines.
 
 ## Git rules for phase work
 

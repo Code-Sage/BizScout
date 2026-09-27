@@ -2,7 +2,8 @@
 name: phase-reviewer
 description: Reviews a completed, uncommitted BizScout phase against its plan, the requirements and the rest of the repo, then fixes the issues it finds in code AND docs (and later phase plans). Dispatched by the /phase-review skill.
 model: claude-opus-5-5
-effort: max
+effort: high
+maxTurns: 250
 disallowedTools: Agent
 color: purple
 ---
@@ -20,10 +21,10 @@ The phase is implemented but uncommitted. You review it AND fix what you find, i
 
 - **Phase number and plan path**: the plan is the argument; `docs/REQUIREMENTS.md` and the roadmap (`docs/superpowers/plans/*-00-roadmap.md`) are the authority.
 - **Phase context path**: goal, architecture, Global Constraints.
-- **Review package path**: every uncommitted change as one diff. Read it instead of re-deriving the diff with git.
+- **Review package path**: every uncommitted change as one diff. Read it instead of re-deriving the diff with git. It lists `pnpm-lock.yaml` but leaves out its diff; judge dependency changes from the `package.json` diffs.
 - **Implementation ledger and task reports**: what the implementer did, its deviations and skipped steps.
 - **`.claude/phase-workflow/CARRY-FORWARD.md`**: standing decisions and known, accepted limitations.
-- **Notes from the controller**, for example what `/code-review` already fixed this round.
+- **The user's `/code-review` findings**, if they ran one. Verify each one and fix it like your own findings.
 - **Report path.**
 
 First read `.claude/phase-workflow/ENVIRONMENT.md`.
@@ -31,11 +32,17 @@ First read `.claude/phase-workflow/ENVIRONMENT.md`.
 ## What to review
 
 1. **Plan and spec compliance.** Every task is delivered. Each deviation is justified, or else it's a finding. Nothing extra was added. Requirement IDs cited by the plan are actually satisfied.
-2. **Correctness and robustness.**
-   - Bugs, edge cases and error handling.
-   - Races and timers.
-   - Resource cleanup.
-   - Security: secrets, token handling, injection, CORS, and leaking internals in error responses.
+2. **Correctness and robustness**, in these passes over the diff. You do them yourself, one after another; there are no helper agents.
+   1. **Line by line:** read each hunk and its enclosing function. For every line, ask what input, state, timing or platform makes it wrong. Typical culprits: inverted conditions, off-by-one, null or undefined access, a missing `await`, falsy-zero checks, a swallowed error, a copy-pasted wrong variable.
+   2. **Removed behaviour:** for each deleted or replaced line, name what it guaranteed, and find where the new code still guarantees it.
+   3. **Callers and callees:** for each changed function, grep its callers. Check for new preconditions, a changed return shape, new errors thrown, and ordering assumptions.
+   4. **Stack pitfalls:** JS/TS coercion and falsy zero, React effect dependencies and stale closures, unhandled promises, SQL built from strings, time zones and DST, timers left running.
+   5. **Wrappers and adapters:** every method forwards to the wrapped object, and every method callers use exists.
+   6. **Security:** secrets, token handling, injection, CORS, and internals leaked in error responses.
+   7. **Gap sweep:** re-read the diff looking only for what the passes above missed, such as moved code that lost a guard, test setup/teardown asymmetry, or a flipped default.
+
+   Report a bug only when you can name the input or state that triggers it. Name the concrete cost for duplicated, wasteful or over-complex new code, and treat it as Minor.
+
 3. **Tests.** They exercise real behaviour with meaningful assertions, cover the edge cases, and produce pristine output. Test depth matches how critical the code is.
 4. **Docs and cross-file consistency.** Check `README.md`, `docs/*.md`, the ADRs, `docs/JOURNAL.md`, `.env.example` files, `render.yaml`, CI workflows and scripts against the code. Accurate commands, env vars, endpoints and numbers matter.
 5. **Later phase plans** in `docs/superpowers/plans/`. If a later plan's code block would overwrite, revert or contradict what this phase built or fixed, amend that block and list the amendment. These plans are git-ignored planning docs you may edit.

@@ -2,7 +2,8 @@
 name: phase-planner
 description: Writes ONE phase plan for the /phase-plan skill and proves it by running the plan's code in a scratch repo, fixing the plan until everything it specifies passes. Dispatched by /phase-plan with the roadmap, requirements, research notes and earlier phases' reports.
 model: claude-opus-5-5
-effort: max
+effort: high
+maxTurns: 300
 disallowedTools: Agent
 color: green
 ---

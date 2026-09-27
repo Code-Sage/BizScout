@@ -1,10 +1,10 @@
 ---
 name: phase-plan
-description: Step 0 of the BizScout phase cycle. Turns requirements (a PDF or other file, a URL, or text typed after the command) into a roadmap and validated phase plans in docs/superpowers/plans/, with Opus 5.5 at max effort and one phase-planner agent per phase.
+description: Step 0 of the BizScout phase cycle. Turns requirements (a PDF or other file, a URL, or text typed after the command) into a roadmap and validated phase plans in docs/superpowers/plans/, with Opus 5.5 at high effort and one phase-planner agent per phase.
 argument-hint: <requirements.pdf | requirements text> [extra instructions]
 disable-model-invocation: true
 model: claude-opus-5-5
-effort: max
+effort: high
 ---
 
 # Plan phases from requirements (step 0: plan → implement → review → your manual review → commit)
@@ -69,7 +69,7 @@ Then:
      - the roadmap and `docs/REQUIREMENTS.md`;
      - `.claude/phase-workflow/CARRY-FORWARD.md` and `ENVIRONMENT.md`;
      - the ADRs and the README.
-  4. Map the code with the codebase-memory MCP: `index_repository` if needed, then `get_architecture` and `search_graph`. For wide sweeps, use the `Explore` agent.
+  4. Map the code with the codebase-memory MCP: `index_repository` if needed, then `get_architecture` and `search_graph`. For wide sweeps, use the `Explore` agent with the Agent tool's `model: sonnet`: it only searches, and otherwise it inherits your Opus.
   5. New requirements that conflict with what's built are questions for step 3.
 - **Ledger:** `Mode: greenfield | extend; first phase NN`.
 
@@ -151,6 +151,9 @@ Apply any changes the user asks for first. **Ledger:** `Roadmap: approved`.
    - the approved downloads;
    - the plan path: `docs/superpowers/plans/$DATE-<project>-NN-<slug>.md`;
    - the report path: `$WS/phase-N-report.md`.
+
+   **Model:** the agent's default is Opus 5.5. For a phase that adds no application code (docs, submission or CI/config only), dispatch it with the Agent tool's `model: sonnet` (Sonnet 5, half the price per token). If a planner stops at its turn limit, resume it once with "finish and report".
+
 3. **Check its work** yourself, and resume the same agent with anything missing:
    - `grep -nE '^### Task [0-9]+' <plan>`: tasks are numbered from 1 with no gaps.
    - `grep -niE 'TBD|TODO|implement later|similar to task|add appropriate|fill in' <plan>` finds only code that really means it.
@@ -197,6 +200,6 @@ Reply with:
 - the validation results, and what wasn't executed;
 - the pending user actions.
 
-Then: "Review the plans in `docs/superpowers/plans/`; I'll apply any changes you ask for. Then start a new session, set the model picker to Sonnet 5 at Max, and run `/phase-implement <first new phase>`."
+Then: "Review the plans in `docs/superpowers/plans/`; I'll apply any changes you ask for. Then start a new session, set the model picker to Sonnet 5 at medium, and run `/phase-implement <first new phase>`."
 
 Nothing is committed. If `docs/superpowers/` is git-ignored, the plans stay local until you commit them.

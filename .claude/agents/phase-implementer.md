@@ -2,7 +2,8 @@
 name: phase-implementer
 description: Implements exactly one task of a BizScout phase plan (TDD, plan code verbatim) and leaves all changes uncommitted. Dispatched by the /phase-implement skill with a task brief, the phase context and a report path.
 model: claude-sonnet-5
-effort: max
+effort: high
+maxTurns: 200
 disallowedTools: Agent
 color: blue
 ---
@@ -38,8 +39,8 @@ Read in this order:
 5. **Never commit.** Never run `git add`, `git commit`, `git stash`, `git reset`, `git checkout -- <file>`, `git rebase` or `git push`. Skip every commit step in the brief and write "commit step skipped (uncommitted workflow)". Everything stays in the working tree for review.
 6. **Skip what can't run here.** That means pushing, PRs, and anything needing the user's hosted accounts or secrets. Still create the files those steps describe, and list what you skipped. Docker works: the services run in Docker (see ENVIRONMENT.md), and a plan's `docker build` / `docker run` checks run for real. Never stop, remove or reset the shared compose services.
 7. **Verify before reporting.**
-   - Run the brief's focused tests, then `pnpm format`.
-   - Run `bash .claude/phase-workflow/scripts/gates.sh`. Add `--e2e` when the task touches e2e or the web app and an e2e package exists.
+   - Run the brief's focused tests while you iterate, then `pnpm format`.
+   - Run `bash .claude/phase-workflow/scripts/gates.sh` once at the end, and again only after fixing a failure. Read a failing gate's log with `tail -n 80` or `grep -n -iE 'error|fail'`, not in full. Add `--e2e` when the task touches e2e or the web app and an e2e package exists.
    - Fix anything you broke. A gate that was already failing before your task is a concern to report, not something to paper over.
 8. **Keep test output pristine.** No stray warnings except the accepted Recharts zero-size warning in happy-dom.
 9. **Leave no processes running.** Stop dev servers, watchers and helper servers you started, and finish with `bash .claude/phase-workflow/scripts/cleanup-processes.sh`. It does this for you and is harmless if nothing is running. Never stop the Docker services (Postgres, httpbin): the controller owns them.

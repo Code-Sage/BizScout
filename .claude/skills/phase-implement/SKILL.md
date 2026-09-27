@@ -1,11 +1,11 @@
 ---
 name: phase-implement
-description: Step 1 of the BizScout phase cycle. Implements one phase plan task by task with the phase-implementer agent (Sonnet 5, max effort) on a phase branch, leaving every change uncommitted for review.
+description: Step 1 of the BizScout phase cycle. Implements one phase plan task by task with the phase-implementer agent (Sonnet 5, high effort; escalates a failing task to Opus 5.5) on a phase branch, leaving every change uncommitted for review.
 argument-hint: <phase number>
 arguments: [phase]
 disable-model-invocation: true
 model: claude-sonnet-5
-effort: max
+effort: medium
 ---
 
 # Phase $phase: implement (step 1 of 4: implement → review → your manual review → commit)
@@ -43,6 +43,7 @@ If CARRY-FORWARD.md has unchecked items for this phase (a heading naming Phase $
 ## 2. For each task, in order (never in parallel)
 
 1. **Brief:** `bash .claude/phase-workflow/scripts/task-brief.sh "$PLAN" N "$WORKSPACE/task-N-brief.md"`.
+   - **Batch small tasks.** Consecutive tasks that touch only docs, or only config whose full content is in the brief, go to ONE implementer. Write each task's brief, and give one report path per task. A fresh agent costs a full context build-up, so this is cheaper than one agent each.
 2. **Dispatch** the `phase-implementer` agent and wait for it. Keep the prompt short, because the brief is the requirements. Include:
    - the phase number and task title;
    - the brief path, `$WORKSPACE/phase-context.md` and `.claude/phase-workflow/ENVIRONMENT.md`;
@@ -53,11 +54,13 @@ If CARRY-FORWARD.md has unchecked items for this phase (a heading naming Phase $
    - **DONE or DONE_WITH_CONCERNS:** read the concerns. Run `pnpm lint` and `pnpm typecheck` yourself. If either is red, resume the same agent with the failures. Then append `Task N: done: <one line; deviations if any>` to the ledger.
    - **NEEDS_CONTEXT:** answer from the plan, the spec (`docs/REQUIREMENTS.md`) and the roadmap, then resume the same agent. Record any ruling as `Ruling: <decision>: <why>: <cost if wrong>`.
    - **BLOCKED:** add context, or rule on a plan defect and resume. Stop and ask the user only for decisions that are irreversible, security-sensitive, need accounts or money, or when the plan is so broken that every path is a guess.
+   - **Stopped at its turn limit** (the reply is cut off or has no status): resume it once with "finish and report". If it stops again, treat it as BLOCKED.
+   - **Escalate once, only on failure.** If the task is still BLOCKED after you added context, or its gates are still red after one resume, dispatch a fresh `phase-implementer` for that task with the Agent tool's `model: opus` (Opus 5.5). Give it the failed agent's report. Record `Escalated: Task N to Opus 5.5: <why>`. Never start a task on Opus.
 4. Never fix code yourself, never commit, and never dispatch two implementers at once.
 
 ## 3. Finish
 
-1. Run `bash .claude/phase-workflow/scripts/gates.sh`, adding `--e2e` if an e2e package exists. If a gate is red, resume or dispatch a `phase-implementer` with the failures until green. Allow at most 3 rounds, then stop and report.
+1. Run `bash .claude/phase-workflow/scripts/gates.sh`, adding `--e2e` if an e2e package exists. If a gate is red, resume or dispatch a `phase-implementer` with the failures until green: rounds 1–2 on the default model, round 3 with `model: opus`. After 3 rounds, stop and report.
 2. Write `$WORKSPACE/implementation-summary.md` covering: tasks done, deviations, rulings, skipped steps, pending user actions and the gate results.
 
 ## 4. Tear down
@@ -73,4 +76,4 @@ Then reply to the user with:
 - the summary, in brief;
 - the pending user actions;
 - "Services are still running for the next step; stop them any time with `bash .claude/phase-workflow/scripts/stop-services.sh`."
-- "Next: optionally switch the model picker to Opus 5.5 at Max, optionally run `/code-review ultra` yourself, then run `/phase-review $phase`."
+- "Next: set the model picker to Opus 5.5 at medium (it handles your step-3 change requests), optionally run `/code-review ultra` yourself for a deeper, separately billed review, then run `/phase-review $phase`."

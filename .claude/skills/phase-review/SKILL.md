@@ -1,11 +1,11 @@
 ---
 name: phase-review
-description: Step 2 of the BizScout phase cycle. Reviews the uncommitted phase changes and fixes issues in code and docs with Opus 5.5 at max effort (built-in code review + the phase-reviewer agent), then hands over to the user for manual review.
+description: Step 2 of the BizScout phase cycle. Reviews the uncommitted phase changes and fixes issues in code and docs with one phase-reviewer agent (Opus 5.5, high effort; no fan-out), then hands over to the user for manual review.
 argument-hint: <phase number>
 arguments: [phase]
 disable-model-invocation: true
 model: claude-opus-5-5
-effort: max
+effort: medium
 ---
 
 # Phase $phase: review and fix (step 2 of 4)
@@ -20,18 +20,11 @@ You are the review controller. Everything stays uncommitted.
    - You are on `$BRANCH`.
    - `git status --porcelain` shows phase changes (anything besides `.claude/phase-workflow/CARRY-FORWARD.md`).
    - `$WORKSPACE/progress.md` has a `done` line (or `pending user action`) for every task in `grep -nE '^### Task [0-9]+' "$PLAN"`.
-4. If the user already ran `/code-review ultra` in this session, collect its findings for step 2.
+4. If the user ran `/code-review` (any level, including `ultra`) on these changes before this step, collect its findings for step 1.
 
-## 1. Correctness pass: built-in code review
+This skill never invokes the built-in `code-review` itself. That skill fans out: at `max` it runs 10 finder agents at once, then a verifier per candidate and a sweep, all on the session's model and effort. The phase-reviewer below runs the same kinds of check in one agent, with a fixed model, effort and turn cap.
 
-Invoke the built-in `code-review` skill with the arguments `max --fix` on the current uncommitted changes. Then run `bash .claude/phase-workflow/scripts/gates.sh`, and fix anything the review's edits broke.
-
-Record in `$WORKSPACE/review-summary.md`:
-
-- what `code-review` found and changed;
-- the `/code-review ultra` findings, if any, and whether you applied them. Apply every Critical or Important one; treat Minor ones by the same rules as step 2.
-
-## 2. Holistic pass: phase-reviewer agent
+## 1. Review and fix: the phase-reviewer agent
 
 1. Build the package: `bash .claude/phase-workflow/scripts/review-package.sh "$WORKSPACE/review-package.diff"`.
 2. Dispatch the `phase-reviewer` agent and wait for it. Give it:
@@ -39,11 +32,12 @@ Record in `$WORKSPACE/review-summary.md`:
    - the package path;
    - the ledger `$WORKSPACE/progress.md` and the `task-*-report.md` files;
    - `.claude/phase-workflow/CARRY-FORWARD.md` and `docs/REQUIREMENTS.md`;
-   - a note of what step 1 already fixed;
+   - the user's `/code-review` findings from step 0, if any;
    - the report path `$WORKSPACE/review-report.md`.
-3. If its reply leaves gates red, resume the same agent with the failures. Allow at most 3 rounds, then stop and report the state honestly.
+3. If its reply leaves gates red, resume the same agent with the failures. Allow at most 3 rounds, then stop and report the state honestly. If it stops at its turn limit, resume it once with "finish and report".
+4. Start `$WORKSPACE/review-summary.md` with its verdict, and say which of the user's `/code-review` findings it applied.
 
-## 3. Verify it yourself
+## 2. Verify it yourself
 
 1. Run `bash .claude/phase-workflow/scripts/gates.sh`, adding `--e2e` if an e2e package exists. All gates must pass.
 2. **UI phases only** (changes under `apps/web`): do a browser check.
@@ -51,7 +45,7 @@ Record in `$WORKSPACE/review-summary.md`:
    - Exercise the phase's user-facing flows, at desktop width and at 375 px.
    - Stop both servers afterwards (preview stop) and reset the viewport.
 
-## 4. Tear down
+## 3. Tear down
 
 Do this before handing over, AND before any early stop (a question to the user, a blocker, an error).
 
@@ -59,7 +53,7 @@ Do this before handing over, AND before any early stop (a question to the user, 
 2. Leave the Docker services **running**: while you apply the user's step-3 requests you'll re-run the gates. `/phase-commit` stops them.
 3. Keep the branch, the uncommitted changes and `$WORKSPACE`.
 
-## 5. Hand over for manual review (step 3 of 4)
+## 4. Hand over for manual review (step 3 of 4)
 
 1. Copy the reviewer's "Carry-forward" items into `.claude/phase-workflow/CARRY-FORWARD.md`, under the phase they belong to.
 2. Complete `$WORKSPACE/review-summary.md` with the verdict, fixes (code and docs), later-plan amendments, deferred items, "needs your decision" items and the gate results.

@@ -4,6 +4,8 @@ description: Step 4 of the BizScout phase cycle. After the user's manual review,
 argument-hint: <phase number> [single|split]
 arguments: [phase, mode]
 disable-model-invocation: true
+model: claude-sonnet-5
+effort: medium
 allowed-tools: Bash(git status *) Bash(git diff *) Bash(git add *) Bash(git commit *) Bash(git log *) Bash(git switch *) Bash(git merge *) Bash(git rev-parse *) Bash(git ls-files *)
 ---
 
@@ -67,7 +69,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
    git merge --no-ff "$BRANCH" -m "Merge phase $phase: <title>"
    ```
    Add the same trailers to the merge message. Never push, and keep the phase branch.
-2. Run `bash .claude/phase-workflow/scripts/gates.sh` on `main`.
+2. Check `main`: if `git diff --quiet "$BRANCH" main` succeeds, the merged tree is identical to the one whose gates just passed, so skip the re-run. Otherwise (`main` moved since the branch was created), run `bash .claude/phase-workflow/scripts/gates.sh` on `main`.
 
 ## 5. Tear down (end of the cycle)
 
