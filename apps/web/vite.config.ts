@@ -17,6 +17,8 @@ export default defineConfig({
       exclude: ['src/main.tsx', 'src/test/**', 'src/**/*.d.ts'],
       reporter: ['text', 'html', 'lcov', 'json', 'json-summary'],
       reportsDirectory: './coverage',
+      reportOnFailure: true,
+      thresholds: { lines: 85, statements: 85, functions: 75, branches: 80 },
     },
   },
 });

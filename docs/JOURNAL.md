@@ -26,3 +26,12 @@ A running log of what was built, the decisions behind it, surprises, and time sp
 - Verification: component/hook tests (63) passed; a browser check against the local API confirmed the live row insert without reload, the detail drawer (Escape closes), the 375 px layout without horizontal scroll, and reconnect ("Reconnecting…" → "Live").
 - Deviations from plan: SegmentedControl implements the full radio-group keyboard pattern (roving tabindex, arrow/Home/End keys); an abort-passthrough test was added for the API client.
 - Time: ~1.5 h (agent-executed)
+
+## Phase 4 — Testing & CI
+
+- Built: coverage thresholds (monitoring ≥ 95% lines), coverage summaries + PR comments, Playwright E2E (desktop + mobile), full CI with Postgres and go-httpbin service containers.
+- Decisions: E2E runs against the production web build; the scheduler is disabled in E2E for determinism.
+- Also fixed (from the Phase 3 review): the "Last ping" card no longer reads "in N seconds" between clock ticks or when the API's clock runs ahead of the browser's; the table and chart show a refresh-failed notice above their empty states.
+- Verification: API 110 tests and web 85 tests pass with the coverage thresholds enforced (API 96% lines, monitoring core 98%; web 97%); Playwright 6/6 (3 flows × desktop + Pixel 7). The workflow file passes `@action-validator/cli`; its first GitHub run happens when the branch is pushed.
+- Deviations from plan: none.
+- Time: ~45 min (agent-executed)

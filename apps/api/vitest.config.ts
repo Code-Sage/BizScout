@@ -30,6 +30,15 @@ export default defineConfig({
       exclude: ['src/server.ts', 'src/db/migrate-cli.ts'],
       reporter: ['text', 'html', 'lcov', 'json', 'json-summary'],
       reportsDirectory: './coverage',
+      reportOnFailure: true,
+      thresholds: {
+        lines: 85,
+        statements: 85,
+        functions: 80,
+        branches: 80,
+        // The core component (T6) is held to a higher bar.
+        'src/monitoring/**': { lines: 95, statements: 95, functions: 95, branches: 85 },
+      },
     },
   },
 });

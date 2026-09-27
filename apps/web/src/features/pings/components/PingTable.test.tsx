@@ -126,6 +126,28 @@ describe('PingTable', () => {
     expect(screen.getAllByTestId('ping-row')).toHaveLength(1);
   });
 
+  it('shows an inline notice when a background refresh fails while the list is empty', async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${API}/api/pings`, () => {
+        calls += 1;
+        return calls === 1
+          ? HttpResponse.json({ data: [], nextCursor: null })
+          : HttpResponse.error();
+      }),
+    );
+    const { queryClient } = renderWithClient(<PingTable status="all" onSelect={vi.fn()} />);
+    expect(await screen.findByText('No responses yet')).toBeInTheDocument();
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: pingKeys.list('all') });
+    });
+
+    expect(screen.getByText('No responses yet')).toBeInTheDocument();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent("Couldn't refresh — showing the last loaded data");
+  });
+
   it('highlights rows that arrive live but not the initial ones', async () => {
     server.use(pingsHandler({ first: { ids: [1], next: null } }));
     const { queryClient } = renderWithClient(<PingTable status="all" onSelect={vi.fn()} />);
