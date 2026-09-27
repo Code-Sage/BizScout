@@ -51,7 +51,7 @@ export const pingResults = pgTable(
     index('ping_results_requested_at_idx').on(table.requestedAt.desc()),
     index('ping_results_ok_requested_at_idx').on(table.ok, table.requestedAt),
   ],
-);
+).enableRLS();
 
 export type PingRow = typeof pingResults.$inferSelect;
 export type NewPingRow = typeof pingResults.$inferInsert;

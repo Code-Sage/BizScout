@@ -168,6 +168,24 @@ describe('PingRepository.stats', () => {
   });
 });
 
+describe('PingRepository.deleteOlderThan', () => {
+  it('deletes only pings requested before the cutoff and reports how many', async () => {
+    await repo.insert(buildPingRow({ requestedAt: at('2026-08-01T00:00:00.000Z') }));
+    await repo.insert(buildPingRow({ requestedAt: at('2026-08-20T00:00:00.000Z') }));
+    await repo.insert(buildPingRow({ requestedAt: at('2026-08-25T00:00:00.000Z') })); // at the cutoff: kept
+    await repo.insert(buildPingRow({ requestedAt: at('2026-09-24T00:00:00.000Z') }));
+
+    const deleted = await repo.deleteOlderThan(at('2026-08-25T00:00:00.000Z'));
+
+    expect(deleted).toBe(2);
+    const page = await repo.list({ limit: 10, status: 'all' });
+    expect(page.rows.map((row) => row.requestedAt.toISOString())).toEqual([
+      '2026-09-24T00:00:00.000Z',
+      '2026-08-25T00:00:00.000Z',
+    ]);
+  });
+});
+
 describe('PingRepository.series', () => {
   it('returns points in chronological order within the range', async () => {
     await repo.insert(

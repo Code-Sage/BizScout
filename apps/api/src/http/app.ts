@@ -15,7 +15,7 @@ import { createStreamRouter } from './routes/stream.routes';
 
 export interface AppDeps {
   logger: Logger;
-  corsOrigins: string[];
+  corsOrigins: Array<string | RegExp>;
   version: string;
   pings: PingQueries;
   pingService: Pick<PingService, 'runSlot' | 'runManual'>;

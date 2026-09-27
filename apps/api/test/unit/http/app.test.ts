@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
+import { parseCorsOrigins } from '../../../src/config/cors';
 import { createApp } from '../../../src/http/app';
 import { buildAppDeps } from '../../support/app';
 
@@ -49,6 +50,25 @@ describe('createApp', () => {
     expect(allowed.headers['access-control-allow-origin']).toBe('http://localhost:5173');
 
     const denied = await request(app).get('/api/health').set('Origin', 'https://evil.example');
+    expect(denied.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('allows CORS from origins matching a configured wildcard (Vercel previews)', async () => {
+    const previews = createApp(
+      buildAppDeps({
+        corsOrigins: parseCorsOrigins(
+          'https://bizscout-monitor.vercel.app,https://bizscout-monitor-*.vercel.app',
+        ),
+      }),
+    );
+    const preview = 'https://bizscout-monitor-git-feat-x-me.vercel.app';
+
+    const allowed = await request(previews).get('/api/health').set('Origin', preview);
+    expect(allowed.headers['access-control-allow-origin']).toBe(preview);
+
+    const denied = await request(previews)
+      .get('/api/health')
+      .set('Origin', 'https://bizscout-monitor-a.evil.vercel.app');
     expect(denied.headers['access-control-allow-origin']).toBeUndefined();
   });
 

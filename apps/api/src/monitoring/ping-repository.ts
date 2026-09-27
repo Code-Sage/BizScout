@@ -168,6 +168,12 @@ export class PingRepository {
     );
   }
 
+  /** Retention: removes pings requested before `cutoff`. Returns the number deleted. */
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const result = await this.db.delete(pingResults).where(lt(pingResults.requestedAt, cutoff));
+    return result.rowCount ?? 0;
+  }
+
   async series(from: Date, to: Date, limit = 5_000): Promise<SeriesPoint[]> {
     return this.db
       .select({
