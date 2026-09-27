@@ -4,6 +4,8 @@ Pings `httpbin.org/anything` every five minutes with a random JSON payload, stor
 
 > Status: 🚧 under construction — see `docs/JOURNAL.md` for progress.
 
+**Live:** dashboard https://bizscout-monitor.vercel.app · API https://bizscout-monitor-api.onrender.com/api/health
+
 ## Quick start (local)
 
 Prerequisites: Node 24, pnpm 11, Docker.
@@ -28,13 +30,14 @@ pnpm --filter @bizscout/web dev   # http://localhost:5173
 
 ## Documentation
 
-| Doc                    | What's inside                                       |
-| ---------------------- | --------------------------------------------------- |
-| `docs/REQUIREMENTS.md` | The brief paraphrased with requirement IDs          |
-| `docs/DATABASE.md`     | Database schema, entity diagram, indexing           |
-| `docs/adr/`            | Architecture decision records                       |
-| `docs/JOURNAL.md`      | Build journal: decisions, surprises, time spent     |
-| `docs/TESTING.md`      | Testing strategy, core components, how to run tests |
+| Doc                    | What's inside                                            |
+| ---------------------- | -------------------------------------------------------- |
+| `docs/REQUIREMENTS.md` | The brief paraphrased with requirement IDs               |
+| `docs/DATABASE.md`     | Database schema, entity diagram, indexing                |
+| `docs/adr/`            | Architecture decision records                            |
+| `docs/JOURNAL.md`      | Build journal: decisions, surprises, time spent          |
+| `docs/TESTING.md`      | Testing strategy, core components, how to run tests      |
+| `docs/DEPLOYMENT.md`   | How it's deployed, env vars, operations, troubleshooting |
 
 ## API (backend)
 

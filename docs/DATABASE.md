@@ -47,6 +47,15 @@ erDiagram
 | `ping_results_requested_at_idx` (desc) | Stats/series windows (`requested_at BETWEEN …`)                                                               |
 | `ping_results_ok_requested_at_idx`     | "Failures in range" queries                                                                                   |
 
+## Migrations
+
+| Migration         | What it does                                                                                                                                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0000_init`       | `ping_results` and its indexes                                                                                                                                                                                              |
+| `0001_enable_rls` | Enables row-level security with no policies, so Supabase's auto-generated REST Data API can't read the table. The API connects as the table owner, which bypasses RLS, so it is unaffected (`.enableRLS()` in `schema.ts`). |
+
+Production applies them on boot (`RUN_MIGRATIONS_ON_BOOT=true`). Every query, migration statements included, runs under the pool's 15 s `query_timeout` (`apps/api/src/db/client.ts`), so a migration that rewrites a large table would need to be split up or run outside the app.
+
 ## Sizing
 
-288 pings/day × ~2 KB (payload + echo) ≈ 0.6 MB/day ≈ 18 MB/month: comfortably inside Supabase's free 500 MB. A daily retention job (Phase 5) keeps 30 days by default.
+288 pings/day × ~2 KB (payload + echo) ≈ 0.6 MB/day ≈ 18 MB/month: comfortably inside Supabase's free 500 MB. A daily retention job at 00:00 UTC deletes pings requested more than `RETENTION_DAYS` (default 30) days ago, which keeps the table at roughly 8,600 rows (~18 MB).
