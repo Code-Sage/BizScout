@@ -3,19 +3,20 @@
 Decisions and fixes that outlive a single phase. `/phase-implement` does the items for its phase first,
 `/phase-review` adds new ones, and `/phase-commit` ticks them off. Edit freely.
 
-## Do first in Phase 4
-
-- [ ] **"Last ping … in N seconds" (Important, from Phase 3's final review).** `apps/web/src/features/pings/components/LastPingCard.tsx` computes `formatRelative(lastPingAt, now)` with `now` from `useNow` (15 s tick), so after a live ping `lastPingAt` can be ahead of `now` and the card reads "in N seconds" for up to 15 s. Fix: use `Math.max(now, Date.now())` (or re-read `Date.now()` during render, keeping `useNow` only as the re-render trigger). Test: render, change `lastPingAt` to a time after the last tick, assert "… ago" wording.
-- [ ] (Minor, optional) When the cached list/series is empty and a refresh fails, the empty state shows without any notice (`PingTable.tsx`, `ResponseTimeChart.tsx`: check `isError` before the empty-state branch when there's no data to show).
-
 ## Phase 5 (production hardening task)
 
 - [ ] Add a pg `query_timeout` (e.g. 15 s) so a hung query can't stall the scheduler (`apps/api/src/db/client.ts`).
+- [ ] (Minor, optional, from Phase 4's review) Keep the local E2E API independent of `apps/api/.env` (e.g. a local `DATABASE_SSL=true` breaks local E2E): skip `.env` loading when `NODE_ENV === 'test'` or set `DATABASE_SSL=false` in the Playwright web-server env. CI is unaffected.
 - [ ] Drain in-flight work on shutdown: await `server.close()` (bounded by the 10 s timer) and in-flight `runSlot` calls before ending the pool (`apps/api/src/server.ts`).
 
 ## Before Phase 7 runs
 
-- [ ] Amend `docs/superpowers/plans/2026-09-24-bizscout-07-anomaly-detection-frontend.md`: its replacement `use-live-stream.ts` must keep reconnect-with-backoff after a fatal EventSource error (5 s doubling to 60 s, reset on open, `hasOpened` across connections) and invalidate `pingKeys.all` on reconnect; its new components (AnomalyChart, AlertsPanel, DetectionPanel) must show the full `ErrorState` only when there is no cached data and a compact refresh alert otherwise. Otherwise Phase 7 reverts Phase 3's fixes.
+- [ ] Phase 7's replacement `use-live-stream.ts` must keep reconnect-with-backoff after a fatal EventSource error (5 s doubling to 60 s, reset on open, `hasOpened` across connections) and invalidate `pingKeys.all` on reconnect. `AlertsPanel` and `DetectionPanel` must show the full `ErrorState` only when there is no cached data, and a compact `RefreshError` otherwise (including above empty states). `AnomalyChart` in the Phase 7 plan (Task 3) was already amended by the Phase 4 review. Otherwise Phase 7 reverts Phase 3/4's fixes.
+
+## Pending user action (Phase 4 Task 3, steps 3–4)
+
+- [ ] Push the branch, open the PR, confirm the four CI checks (quality, api, web, e2e), the two coverage PR comments and the job-summary tables.
+- [ ] With your go-ahead, apply branch protection on `main` requiring the four new checks; drop any old "Unit tests" required check.
 
 ## Standing decisions
 
@@ -28,3 +29,4 @@ Decisions and fixes that outlive a single phase. `/phase-implement` does the ite
 ## Completed phases
 
 - Phase 1 foundation, Phase 2 backend monitoring, Phase 3 frontend dashboard — merged into main (main @ 02980dc, 2026-09-24).
+- Phase 4 (Testing Strategy, Coverage & CI Pipeline): merged 2026-09-27, branch phase/04-testing-ci. Both "Do first in Phase 4" items (clock-skew "in N seconds" fix, empty-state refresh notice) done and ticked off above.

@@ -17,7 +17,7 @@ pnpm --filter @bizscout/api dev
 
 If something already listens on 5432 (e.g. a Homebrew Postgres), either stop it or run
 `POSTGRES_PORT=55432 docker compose up -d --wait` and point `DATABASE_URL` / `DATABASE_URL_TEST`
-at port 55432 instead.
+(and `E2E_DATABASE_URL` for `pnpm e2e`) at port 55432 instead.
 
 Then, in a second terminal:
 
@@ -28,12 +28,13 @@ pnpm --filter @bizscout/web dev   # http://localhost:5173
 
 ## Documentation
 
-| Doc                    | What's inside                                   |
-| ---------------------- | ----------------------------------------------- |
-| `docs/REQUIREMENTS.md` | The brief paraphrased with requirement IDs      |
-| `docs/DATABASE.md`     | Database schema, entity diagram, indexing       |
-| `docs/adr/`            | Architecture decision records                   |
-| `docs/JOURNAL.md`      | Build journal: decisions, surprises, time spent |
+| Doc                    | What's inside                                       |
+| ---------------------- | --------------------------------------------------- |
+| `docs/REQUIREMENTS.md` | The brief paraphrased with requirement IDs          |
+| `docs/DATABASE.md`     | Database schema, entity diagram, indexing           |
+| `docs/adr/`            | Architecture decision records                       |
+| `docs/JOURNAL.md`      | Build journal: decisions, surprises, time spent     |
+| `docs/TESTING.md`      | Testing strategy, core components, how to run tests |
 
 ## API (backend)
 
