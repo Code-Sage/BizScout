@@ -124,6 +124,62 @@ describe('SlotScheduler', () => {
     scheduler.stop();
   });
 
+  it('stop() waits for an in-flight job to settle before resolving', async () => {
+    let resolveJob: (() => void) | undefined;
+    const job = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveJob = resolve;
+        }),
+    );
+    const { scheduler } = build(job);
+
+    scheduler.start();
+    await vi.advanceTimersByTimeAsync(150_000); // reach 10:05:00; job is now in flight
+    expect(job).toHaveBeenCalledTimes(1);
+
+    let stopped = false;
+    const stopped$ = scheduler.stop().then(() => {
+      stopped = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(stopped).toBe(false); // the in-flight job hasn't settled yet
+
+    resolveJob?.();
+    await stopped$;
+    expect(stopped).toBe(true);
+  });
+
+  it('drains a runOnStart catch-up that is still in flight alongside the first scheduled run', async () => {
+    const resolvers: Array<() => void> = [];
+    const job = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+    const { scheduler } = build(job, true);
+
+    scheduler.start();
+    await vi.advanceTimersByTimeAsync(150_000); // catch-up run at 10:00:00, scheduled run at 10:05:00
+    expect(job).toHaveBeenCalledTimes(2);
+    expect(resolvers).toHaveLength(2);
+
+    let stopped = false;
+    const stopped$ = scheduler.stop().then(() => {
+      stopped = true;
+    });
+
+    resolvers[0]!();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(stopped).toBe(false); // one of the two in-flight jobs is still pending
+
+    resolvers[1]!();
+    await stopped$;
+    expect(stopped).toBe(true);
+  });
+
   it('does not let a timer armed during stop()+start() of an in-flight run fire a job after the final stop()', async () => {
     let resolveJob: (() => void) | undefined;
     const job = vi.fn(

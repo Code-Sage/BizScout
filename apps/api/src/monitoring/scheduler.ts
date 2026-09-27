@@ -46,6 +46,9 @@ export class SlotScheduler {
   private lastError: string | null = null;
   private lastScheduledSlot = 0;
   private readonly now: () => number;
+  // The `runOnStart` catch-up run can overlap a scheduled run (see the class comment), so more
+  // than one `job` call may be in flight at once; track them all so stop() can drain every one.
+  private readonly inFlight = new Set<Promise<unknown>>();
 
   constructor(private readonly options: SlotSchedulerOptions) {
     this.now = options.now ?? Date.now;
@@ -59,17 +62,24 @@ export class SlotScheduler {
       'scheduler started',
     );
     if (this.options.runOnStart) {
-      void this.fire(slotStartFor(new Date(this.now()), this.options.intervalMs));
+      this.track(this.fire(slotStartFor(new Date(this.now()), this.options.intervalMs)));
     }
     this.scheduleNext();
   }
 
-  stop(): void {
+  /** Stops scheduling new runs and waits for any run already in flight to settle. */
+  async stop(): Promise<void> {
     this.running = false;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.nextRunAt = null;
     this.lastScheduledSlot = 0;
+    await Promise.allSettled(this.inFlight);
+  }
+
+  private track(run: Promise<void>): void {
+    this.inFlight.add(run);
+    void run.finally(() => this.inFlight.delete(run));
   }
 
   status(): SchedulerStatus {
@@ -103,7 +113,9 @@ export class SlotScheduler {
     this.timer = setTimeout(() => {
       // Defense in depth: if a leaked timer ever did fire after stop(), don't run the job.
       if (!this.running) return;
-      void this.fire(new Date(nextMs)).finally(() => {
+      const run = this.fire(new Date(nextMs));
+      this.track(run);
+      void run.finally(() => {
         if (this.running) this.scheduleNext();
       });
     }, nextMs - now);
