@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: bizscout-monitor-api
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    # Deploy only after the GitHub checks on the commit pass.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: DATABASE_URL
+        sync: false # Supabase Session pooler URL, entered in the dashboard
+      - key: DATABASE_SSL
+        value: 'true'
+      - key: DATABASE_POOL_MAX
+        value: '5'
+      - key: RUN_MIGRATIONS_ON_BOOT
+        value: 'true'
+      - key: CORS_ORIGINS
+        sync: false # e.g. https://bizscout-monitor.vercel.app,https://bizscout-monitor-*.vercel.app
+      - key: HTTPBIN_URL
+        value: https://httpbin.org/anything
+      - key: PING_INTERVAL_MS
+        value: '300000'
+      - key: PING_TIMEOUT_MS
+        value: '10000'
+      - key: SCHEDULER_ENABLED
+        value: 'true'
+      - key: RETENTION_DAYS
+        value: '30'
+      - key: INTERNAL_API_TOKEN
+        generateValue: true
