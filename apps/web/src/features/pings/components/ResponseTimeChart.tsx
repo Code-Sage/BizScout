@@ -44,10 +44,13 @@ export function ResponseTimeChart({ window }: { window: StatsWindow }) {
   }
   if (data.length === 0) {
     return (
-      <EmptyState
-        title="No pings in this window yet"
-        description="The chart fills in as pings arrive."
-      />
+      <div className="space-y-2">
+        {query.isError && <RefreshError onRetry={() => void query.refetch()} />}
+        <EmptyState
+          title="No pings in this window yet"
+          description="The chart fills in as pings arrive."
+        />
+      </div>
     );
   }
 

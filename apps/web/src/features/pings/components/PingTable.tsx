@@ -51,14 +51,19 @@ export function PingTable({ status, onSelect }: PingTableProps) {
 
   if (rows.length === 0) {
     return (
-      <EmptyState
-        title="No responses yet"
-        description={
-          status === 'all'
-            ? 'The first ping runs within five minutes of the API starting.'
-            : 'Nothing matches this filter yet.'
-        }
-      />
+      <div className="space-y-2">
+        {query.isError && !query.isFetchNextPageError && (
+          <RefreshError onRetry={() => void query.refetch()} />
+        )}
+        <EmptyState
+          title="No responses yet"
+          description={
+            status === 'all'
+              ? 'The first ping runs within five minutes of the API starting.'
+              : 'Nothing matches this filter yet.'
+          }
+        />
+      </div>
     );
   }
 

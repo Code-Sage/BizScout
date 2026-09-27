@@ -62,4 +62,24 @@ describe('ResponseTimeChart', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent("Couldn't refresh — showing the last loaded data");
   });
+
+  it('shows an inline notice when a background refresh fails while the window has no data', async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${API}/api/pings/series`, () => {
+        calls += 1;
+        return calls === 1 ? HttpResponse.json({ window: '1h', points: [] }) : HttpResponse.error();
+      }),
+    );
+    const { queryClient } = renderWithClient(<ResponseTimeChart window="1h" />);
+    expect(await screen.findByText('No pings in this window yet')).toBeInTheDocument();
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: pingKeys.series('1h') });
+    });
+
+    expect(screen.getByText('No pings in this window yet')).toBeInTheDocument();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent("Couldn't refresh — showing the last loaded data");
+  });
 });
