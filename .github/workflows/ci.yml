@@ -12,6 +12,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  CI: true
+
 jobs:
   quality:
     name: Lint, format & typecheck
@@ -28,9 +31,29 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
 
-  unit:
-    name: Unit tests
+  api:
+    name: API tests (unit + integration) & coverage
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: bizscout
+          POSTGRES_PASSWORD: bizscout
+          POSTGRES_DB: bizscout_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U bizscout -d bizscout_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      httpbin:
+        image: mccutchen/go-httpbin:2.25
+        ports: ['8080:8080']
+    env:
+      DATABASE_URL_TEST: postgres://bizscout:bizscout@localhost:5432/bizscout_test
+      HTTPBIN_TEST_URL: http://localhost:8080/anything
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -39,5 +62,100 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Wait for go-httpbin
+        run: curl --silent --fail --retry 20 --retry-connrefused --retry-delay 1 http://localhost:8080/get > /dev/null
       - run: pnpm --filter @bizscout/shared test
-      - run: pnpm --filter @bizscout/api test:unit
+      - run: pnpm --filter @bizscout/api test:coverage
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f apps/api/coverage/coverage-summary.json ]; then
+            node scripts/coverage-summary.mjs apps/api/coverage/coverage-summary.json "API coverage" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Coverage PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: API
+          working-directory: apps/api
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage-api
+          path: apps/api/coverage
+          retention-days: 14
+
+  web:
+    name: Web tests & coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @bizscout/web test:coverage
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f apps/web/coverage/coverage-summary.json ]; then
+            node scripts/coverage-summary.mjs apps/web/coverage/coverage-summary.json "Web coverage" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Coverage PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: Web
+          working-directory: apps/web
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage-web
+          path: apps/web/coverage
+          retention-days: 14
+      - run: pnpm --filter @bizscout/web build
+
+  e2e:
+    name: End-to-end (Playwright)
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: bizscout
+          POSTGRES_PASSWORD: bizscout
+          POSTGRES_DB: bizscout_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U bizscout -d bizscout_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      httpbin:
+        image: mccutchen/go-httpbin:2.25
+        ports: ['8080:8080']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wait for go-httpbin
+        run: curl --silent --fail --retry 20 --retry-connrefused --retry-delay 1 http://localhost:8080/get > /dev/null
+      - name: Install Chromium
+        run: pnpm --filter @bizscout/e2e exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 14
