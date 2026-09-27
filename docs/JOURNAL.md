@@ -35,3 +35,13 @@ A running log of what was built, the decisions behind it, surprises, and time sp
 - Verification: API 110 tests and web 85 tests pass with the coverage thresholds enforced (API 96% lines, monitoring core 98%; web 97%); Playwright 6/6 (3 flows × desktop + Pixel 7). The workflow file passes `@action-validator/cli`; its first GitHub run happens when the branch is pushed.
 - Deviations from plan: none.
 - Time: ~45 min (agent-executed)
+
+## Phase 5 — Deployment
+
+- Built: tsup bundle, non-root Docker image, Render blueprint (deploy on green CI), Supabase with RLS, Vercel SPA, cron keep-alive + GitHub backup, retention sweep, smoke script.
+- Decisions: ADR-0006. Session pooler for IPv4. Migrations on boot (no pre-deploy hook on free tier).
+- Also fixed (from the Phase 4 review): a 15 s pg `query_timeout` so a hung query can't stall the scheduler; the API no longer loads `apps/api/.env` under `NODE_ENV=test`, so local E2E ignores developer settings; shutdown drains in-flight scheduled runs before ending the pool, then closes leftover keep-alive connections so an open dashboard no longer delays (or, on reconnect, blocks) the exit.
+- Verification (local): API tests and gates green; the bundle runs in production mode; the Docker image builds (190 MB), runs as `node` and passes the health check; `scripts/smoke.sh` 5/5 against local servers.
+- Verification (hosted): _pending the deploy_ — gap query over ≥ 2 hours and the production smoke run.
+- Deviations from plan: `.dockerignore` sits at the repo root (the build context) rather than in `apps/api/`; the schedulers' `stop()` is async and awaited, so shutdown waits for in-flight runs.
+- Time: _fill in_

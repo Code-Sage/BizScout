@@ -1,5 +1,7 @@
 import { loadEnv } from './config/env';
+import { shouldLoadDotEnv } from './config/dotenv-policy';
 import { createContainer } from './container';
+import { closeGracefully } from './http/close-gracefully';
 
 function loadDotEnvFile(): void {
   try {
@@ -10,7 +12,7 @@ function loadDotEnvFile(): void {
 }
 
 async function main(): Promise<void> {
-  if (process.env.NODE_ENV !== 'production') loadDotEnvFile();
+  if (shouldLoadDotEnv(process.env.NODE_ENV)) loadDotEnvFile();
 
   const env = loadEnv();
   const container = await createContainer(env);
@@ -36,12 +38,10 @@ async function main(): Promise<void> {
     shuttingDown = true;
     logger.info({ signal }, 'shutting down');
     setTimeout(() => process.exit(1), 10_000).unref();
-    server.close();
-    // server.close() (not awaited) just stops accepting new connections; it does not wait for
-    // open SSE streams to end. container.stop() ends those streams and drains the pool, and we
-    // exit once that resolves, regardless of whether server.close()'s own callback has fired.
-    // The 10 s timer above forces an exit if that shutdown hangs.
-    container.stop().then(
+    // Stop accepting connections, let container.stop() drain in-flight scheduled runs, end the
+    // SSE streams and release the pool, then drop any connection still open (kept-alive sockets
+    // would otherwise hold server.close() open). The 10 s timer above forces an exit if that hangs.
+    closeGracefully(server, () => container.stop()).then(
       () => process.exit(0),
       (error: unknown) => {
         logger.error({ err: error }, 'error during shutdown');

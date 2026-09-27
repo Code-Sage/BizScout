@@ -27,8 +27,8 @@
 - `payload-generator.test.ts`: schema conformance over 500 seeded samples, determinism, uniqueness, optional-section frequency, JSON round-trip.
 - `httpbin-client.test.ts`: success + timing, byte size, HTTP 5xx, invalid JSON, timeout, network error, no-throw contract.
 - `ping-service.test.ts`: full record, event publication, failure recording, skip recorded slot, in-flight guard, concurrent distinct slots, lost insert race, storage failure + lock release, manual pings.
-- `slots.test.ts` / `scheduler.test.ts`: boundary math, exact alignment, cadence, catch-up on start, failure resilience, stop, idempotent start.
-- `ping-repository.test.ts`: insert/idempotency, NULL-slot manual pings, lookups, keyset pagination, filters, replay order, percentiles, empty windows, series.
+- `slots.test.ts` / `scheduler.test.ts`: boundary math, exact alignment, cadence, catch-up on start, failure resilience, stop (waits for in-flight runs, including an overlapping catch-up), idempotent start.
+- `ping-repository.test.ts`: insert/idempotency, NULL-slot manual pings, lookups, keyset pagination, filters, replay order, percentiles, empty windows, series, retention delete.
 - `internal.routes.test.ts`, `stream.routes.test.ts`, `pipeline.test.ts`: the pipeline's HTTP entry points and exits.
 
 ## Determinism rules

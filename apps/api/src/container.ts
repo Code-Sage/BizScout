@@ -59,6 +59,21 @@ export async function createContainer(env: Env): Promise<AppContainer> {
       })
     : null;
 
+  const DAY_MS = 86_400_000;
+  const retention =
+    env.RETENTION_DAYS > 0
+      ? new SlotScheduler({
+          name: 'retention',
+          intervalMs: DAY_MS, // aligned slots => runs at 00:00 UTC
+          logger,
+          job: async () => {
+            const cutoff = new Date(Date.now() - env.RETENTION_DAYS * DAY_MS);
+            const deleted = await pingRepository.deleteOlderThan(cutoff);
+            logger.info({ deleted, cutoff }, 'retention sweep complete');
+          },
+        })
+      : null;
+
   const app = createApp({
     logger,
     corsOrigins: env.CORS_ORIGINS,
@@ -80,9 +95,13 @@ export async function createContainer(env: Env): Promise<AppContainer> {
     start() {
       hub.start();
       scheduler?.start();
+      retention?.start();
     },
     async stop() {
-      scheduler?.stop();
+      // Drain any in-flight scheduled run before ending the pool: a query on a pool that has
+      // already ended rejects, turning a clean shutdown into a logged error.
+      await scheduler?.stop();
+      await retention?.stop();
       hub.stop();
       await database.pool.end();
     },

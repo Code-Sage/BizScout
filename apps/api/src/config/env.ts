@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseCorsOrigins } from './cors';
 
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -12,20 +13,13 @@ export const envSchema = z.object({
   MIGRATIONS_DIR: z.string().default('./drizzle'),
   RUN_MIGRATIONS_ON_BOOT: z.stringbool().default(false),
 
-  CORS_ORIGINS: z
-    .string()
-    .default('http://localhost:5173')
-    .transform((value) =>
-      value
-        .split(',')
-        .map((origin) => origin.trim())
-        .filter(Boolean),
-    ),
+  CORS_ORIGINS: z.string().default('http://localhost:5173').transform(parseCorsOrigins),
 
   HTTPBIN_URL: z.url().default('https://httpbin.org/anything'),
   PING_INTERVAL_MS: z.coerce.number().int().min(1_000).default(300_000),
   PING_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(10_000),
   SCHEDULER_ENABLED: z.stringbool().default(true),
+  RETENTION_DAYS: z.coerce.number().int().min(0).max(3_650).default(30),
 
   INTERNAL_API_TOKEN: z
     .string()

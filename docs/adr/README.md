@@ -9,3 +9,4 @@ Short records of significant decisions: context, decision, consequences. One fil
 | 0003 | Server-Sent Events for real-time delivery                           | Accepted |
 | 0004 | Wall-clock aligned slots with idempotent triggers                   | Accepted |
 | 0005 | Frontend state: TanStack Query as the single source of server truth | Accepted |
+| 0006 | Free-tier hosting: Render + Supabase + Vercel                       | Accepted |

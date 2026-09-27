@@ -25,6 +25,8 @@ export function createDatabase({ url, ssl, maxConnections }: DatabaseOptions): D
     ssl: ssl ? { rejectUnauthorized: false } : undefined,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
+    // A hung query (e.g. a stalled pooler) must not stall the scheduler forever.
+    query_timeout: 15_000,
   });
   const db = drizzle({ client: pool, schema });
   return { db, pool };

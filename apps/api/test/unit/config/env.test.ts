@@ -46,4 +46,9 @@ describe('loadEnv', () => {
   it('rejects an internal token shorter than 24 characters', () => {
     expect(() => loadEnv({ ...base, INTERNAL_API_TOKEN: 'short' })).toThrow(/INTERNAL_API_TOKEN/);
   });
+
+  it('defaults retention to 30 days and allows disabling it', () => {
+    expect(loadEnv(base).RETENTION_DAYS).toBe(30);
+    expect(loadEnv({ ...base, RETENTION_DAYS: '0' }).RETENTION_DAYS).toBe(0);
+  });
 });
