@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Usage: scripts/smoke.sh <api-base-url> [web-url]
+# Usage: scripts/smoke.sh https://bizscout-monitor-api.onrender.com https://biz-scout-web.vercel.app
 set -euo pipefail
 
-API="${1:?usage: smoke.sh <api-base-url> [web-url]}"
+API="${1:?usage: smoke.sh https://bizscout-monitor-api.onrender.com https://biz-scout-web.vercel.app}"
 WEB="${2:-}"
 fail() { echo "✗ $1" >&2; exit 1; }
 pass() { echo "✓ $1"; }
