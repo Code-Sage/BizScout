@@ -38,10 +38,11 @@ A running log of what was built, the decisions behind it, surprises, and time sp
 
 ## Phase 5 — Deployment
 
-- Built: tsup bundle, non-root Docker image, Render blueprint (deploy on green CI), Supabase with RLS, Vercel SPA, cron keep-alive + GitHub backup, retention sweep, smoke script.
+- Built: tsup bundle, non-root Docker image, Render blueprint (deploy on green CI), Supabase with RLS, Vercel SPA, cron keep-alive, retention sweep, smoke script.
 - Decisions: ADR-0006. Session pooler for IPv4. Migrations on boot (no pre-deploy hook on free tier).
 - Also fixed (from the Phase 4 review): a 15 s pg `query_timeout` so a hung query can't stall the scheduler; the API no longer loads `apps/api/.env` under `NODE_ENV=test`, so local E2E ignores developer settings; shutdown drains in-flight scheduled runs before ending the pool, then closes leftover keep-alive connections so an open dashboard no longer delays (or, on reconnect, blocks) the exit.
 - Verification (local): API tests and gates green; the bundle runs in production mode; the Docker image builds (190 MB), runs as `node` and passes the health check; `scripts/smoke.sh` 5/5 against local servers.
 - Verification (hosted): _pending the deploy_ — gap query over ≥ 2 hours and the production smoke run.
 - Deviations from plan: `.dockerignore` sits at the repo root (the build context) rather than in `apps/api/`; the schedulers' `stop()` is async and awaited, so shutdown waits for in-flight runs.
+- Follow-up (2026-09-28): removed the GitHub Actions backup tick (`keepalive.yml`) at the user's request. cron-job.org is now the sole keep-alive source; see ADR-0006's 2026-09-28 update for why the backup added risk (a silent GitHub 60-day pause) without real redundancy value (`/api/internal/tick` is idempotent per slot, so the backup only ever produced a redundant no-op hit).
 - Time: _fill in_

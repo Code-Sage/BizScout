@@ -14,7 +14,7 @@ Decisions and fixes that outlive a single phase. `/phase-implement` does the ite
 - [ ] Task 4: create the Supabase project (Session pooler URL), run migrations against it, verify RLS / Data API exposure.
 - [ ] Task 5: create the Render service from `render.yaml`; set `DATABASE_URL` and `CORS_ORIGINS`; record the API URL and `INTERNAL_API_TOKEN`.
 - [ ] Task 6: import `apps/web` in Vercel (`VITE_API_BASE_URL`, `ENABLE_EXPERIMENTAL_COREPACK=1`); set Render `CORS_ORIGINS` to the Vercel origin(s); browser check.
-- [ ] Task 7: cron-job.org POST tick every 5 min; GitHub secrets `API_URL`, `INTERNAL_API_TOKEN` (set before/at merge: `keepalive.yml` fails every 10 min without them); gap query after ≥ 2 h.
+- [ ] Task 7: cron-job.org POST tick every 5 min with header `x-internal-token`; gap query after ≥ 2 h. (The GitHub Actions backup tick, `keepalive.yml`, was removed 2026-09-28 — cron-job.org is the sole keep-alive source; see the dated note under Completed phases.)
 - [ ] Task 8: GitHub variable `WEB_URL`; run the smoke workflow.
 - [ ] Task 9: replace placeholder URLs in README/JOURNAL; fill in JOURNAL's hosted-verification and Time lines.
 
@@ -49,4 +49,5 @@ Decisions and fixes that outlive a single phase. `/phase-implement` does the ite
 
 - Phase 1 foundation, Phase 2 backend monitoring, Phase 3 frontend dashboard — merged into main (main @ 02980dc, 2026-09-24).
 - Phase 4 (Testing Strategy, Coverage & CI Pipeline): merged 2026-09-27, branch phase/04-testing-ci. Both "Do first in Phase 4" items (clock-skew "in N seconds" fix, empty-state refresh notice) done and ticked off above.
-- Phase 5 (Deployment & Operations): merged 2026-09-28, branch phase/05-deployment. Code done: tsup build, Docker image, CI docker job, wildcard CORS, RLS, retention sweep, graceful shutdown, render.yaml, vercel.json, keepalive/smoke workflows, DEPLOYMENT.md + ADR-0006. Hosted provisioning (Tasks 4-9) still pending — see "Pending user action (Phase 5 hosted steps)" above.
+- Phase 5 (Deployment & Operations): merged 2026-09-28, branch phase/05-deployment. Code done: tsup build, Docker image, CI docker job, wildcard CORS, RLS, retention sweep, graceful shutdown, render.yaml, vercel.json, smoke workflow, DEPLOYMENT.md + ADR-0006. Hosted provisioning (Tasks 4-9) still pending — see "Pending user action (Phase 5 hosted steps)" above.
+- Phase 5 follow-up (2026-09-28): removed `.github/workflows/keepalive.yml` (the GitHub Actions backup tick) at the user's request. It duplicated cron-job.org's job — the tick handler is idempotent per 5-minute slot regardless of caller, so the backup only ever produced a redundant no-op HTTP hit, never a duplicate ping or DB row. cron-job.org is now the sole keep-alive source; the GitHub secret `INTERNAL_API_TOKEN` is no longer needed (only `API_URL` remains, for `smoke.yml`). Updated docs/DEPLOYMENT.md, docs/adr/0006-free-tier-hosting.md and docs/JOURNAL.md to match.

@@ -9,7 +9,7 @@ The brief requires deployment on a free platform. The API needs a long-running p
 
 ## Decision
 
-Render (Docker web service, free) for the API; Supabase (Session pooler) for Postgres; Vercel for the SPA; cron-job.org (primary) and GitHub Actions (backup) for keep-alive ticks.
+Render (Docker web service, free) for the API; Supabase (Session pooler) for Postgres; Vercel for the SPA; cron-job.org for keep-alive ticks. GitHub Actions runs a nightly smoke check only — see the 2026-09-28 update below.
 
 ## Database: why Supabase and not Neon
 
@@ -36,12 +36,25 @@ The general point: scale-to-zero pays off for bursty workloads with long idle ga
 
 ## Consequences
 
-- Cold starts are possible, and the external tick is load-bearing for uptime (hence two independent cron sources).
+- Cold starts are possible, and the external cron-job.org tick is solely load-bearing for uptime — there is no backup cron source (see the 2026-09-28 update below), so its own failure-notification email is the only alert on an outage.
 - Three dashboards to manage, all documented in `docs/DEPLOYMENT.md`.
 - The database stays portable: plain Postgres through node-postgres/Drizzle, with no extensions or provider-specific features. Moving to Neon or any other Postgres is a `DATABASE_URL` change plus the provisioning steps.
+
+## Update 2026-09-28
+
+Removed the GitHub Actions backup tick (`keepalive.yml`, `*/10 * * * *`). It duplicated cron-job.org's
+job: the `/api/internal/tick` handler is idempotent per 5-minute slot regardless of which caller hits
+it, so the backup only ever produced a redundant HTTP round-trip, never a duplicate probe or DB row.
+Its actual safety-net value — surviving a cron-job.org outage — was judged not worth the extra
+GitHub secret (`INTERNAL_API_TOKEN`, alongside the Render env var of the same name) and the risk
+that GitHub's own 60-day scheduled-workflow pause silently drops the "backup" without a visible
+failure. cron-job.org's own failure-notification email is the accepted alerting mechanism at this
+scale. GitHub Actions keeps its nightly production smoke workflow (`smoke.yml`), which is unrelated
+to keep-alive.
 
 ## Revisit if
 
 - A ~$19/month budget is available and per-PR database branches (e.g. for Vercel previews) become valuable: switch to Neon Launch.
 - The ping interval grows to ≥ 15 minutes, so compute can actually scale to zero between pings and Neon Free fits.
 - Supabase changes its free-tier compute or pausing rules.
+- cron-job.org proves unreliable in practice: re-add a GitHub Actions (or other) backup tick.
