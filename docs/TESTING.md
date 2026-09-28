@@ -19,7 +19,7 @@
 | Unit          | Vitest, fake timers, seeded RNG, MSW, in-memory fakes | `apps/api/test/unit`, `apps/web/src/**/*.test.ts(x)`, `packages/shared` | Business rules in isolation: payload shape, probe classification (timeout / network / HTTP / invalid JSON), slot math, scheduler alignment and resilience, service idempotency, bus isolation, SSE framing, cache merge, formatting |
 | Integration   | Vitest + real Postgres + Supertest + real HTTP server | `apps/api/test/integration`                                             | SQL is right (pagination, filters, percentiles, ON CONFLICT), endpoints validate and shape responses, SSE replay works over a real socket, internal auth                                                                            |
 | Live pipeline | Vitest + go-httpbin                                   | `apps/api/test/integration/pipeline.test.ts`                            | The real client + real DB + real echo server: the payload we send is the payload httpbin echoes and we store                                                                                                                        |
-| Component     | Testing Library + MSW + happy-dom                     | `apps/web/src/**`                                                       | Loading / empty / error states, retry, pagination, live highlight, dialog a11y                                                                                                                                                      |
+| Component     | Testing Library + MSW + happy-dom                     | `apps/web/src/**`                                                       | Loading / empty / error states, retry, pagination, live highlight, dialog a11y, chart tooltip (status icon and colour, units)                                                                                                       |
 | End-to-end    | Playwright (desktop + Pixel 7)                        | `e2e/tests`                                                             | A user sees history, a new ping appears **without reload**, details open, the layout adapts                                                                                                                                         |
 
 ### Monitoring pipeline test inventory (T6)
@@ -69,6 +69,6 @@ ones first. If Postgres or go-httpbin don't run on the default ports, point E2E 
 
 ## Deliberately not tested (and why)
 
-- Pixel-perfect chart rendering: Recharts internals; we test the data transform and states instead.
+- Pixel-perfect chart rendering: Recharts internals; we test the data transform, the states and the tooltip card (rendered on its own, since happy-dom gives the chart no size to hover over) instead.
 - Real httpbin.org availability: out of our control. It's monitored, not tested.
 - Load/performance: 288 pings/day; not a meaningful risk at this scale (see Future improvements).

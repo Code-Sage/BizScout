@@ -7,6 +7,7 @@ import {
   ResponsiveContainer,
   Scatter,
   Tooltip,
+  type TooltipContentProps,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -14,16 +15,21 @@ import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
 import { RefreshError } from '../../../components/RefreshError';
 import { Skeleton } from '../../../components/Skeleton';
-import { formatDateTime } from '../../../lib/format';
-import { toChartPoints } from '../chart-data';
+import { type ChartPoint, toChartPoints } from '../chart-data';
 import { usePingSeries } from '../hooks';
+import { ResponseTimeTooltipCard } from './ResponseTimeTooltip';
 
-function formatAxisTime(time: number, window: StatsWindow): string {
+function formatAxisTime(epochMs: number, window: StatsWindow): string {
   const options: Intl.DateTimeFormatOptions =
     window === '7d'
       ? { weekday: 'short', hour: '2-digit' }
       : { hour: '2-digit', minute: '2-digit' };
-  return new Intl.DateTimeFormat(undefined, options).format(time);
+  return new Intl.DateTimeFormat(undefined, options).format(epochMs);
+}
+
+function renderTooltip({ active, payload }: TooltipContentProps) {
+  const point = payload?.[0]?.payload as ChartPoint | undefined;
+  return active && point ? <ResponseTimeTooltipCard point={point} /> : null;
 }
 
 export function ResponseTimeChart({ window }: { window: StatsWindow }) {
@@ -72,17 +78,15 @@ export function ResponseTimeChart({ window }: { window: StatsWindow }) {
           <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis
-              dataKey="time"
+              dataKey="epochMs"
               type="number"
               scale="time"
               domain={['dataMin', 'dataMax']}
-              tickFormatter={(time: number) => formatAxisTime(time, window)}
+              tickFormatter={(epochMs: number) => formatAxisTime(epochMs, window)}
               fontSize={12}
             />
             <YAxis width={56} fontSize={12} />
-            <Tooltip
-              labelFormatter={(time) => formatDateTime(new Date(Number(time)).toISOString())}
-            />
+            <Tooltip content={renderTooltip} />
             <Line
               // Linear, not smoothed: a monitoring chart must not invent values between samples.
               type="linear"
@@ -93,7 +97,7 @@ export function ResponseTimeChart({ window }: { window: StatsWindow }) {
               dot={false}
               isAnimationActive={false}
             />
-            <Scatter dataKey="failedMs" name="Failed" fill="#e11d48" isAnimationActive={false} />
+            <Scatter dataKey="failedMs" fill="#e11d48" isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

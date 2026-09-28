@@ -30,6 +30,8 @@ Decisions and fixes that outlive a single phase. `/phase-implement` does the ite
 
 ## Before Phase 7 runs
 
+- [ ] Delete `ResponseTimeTooltip.tsx` and its test along with `ResponseTimeChart` / `pings/chart-data.ts` (plan amended; it imports `ChartPoint` from the deleted file). Keep the user's tooltip look (2026-09-28) in `AnomalyTooltipCard`: the date, then an `Epoch (ms): <raw ms>` line, both in `text-slate-600`, and a green tick / red cross with the response line in `text-emerald-700` / `text-rose-700`, with units via `formatDuration`/`formatLatency`. There's no separate "Failed" row.
+
 - [ ] Phase 7's replacement `use-live-stream.ts` must keep reconnect-with-backoff after a fatal EventSource error (5 s doubling to 60 s, reset on open, `hasOpened` across connections) and invalidate `pingKeys.all` on reconnect. `AlertsPanel` and `DetectionPanel` must show the full `ErrorState` only when there is no cached data, and a compact `RefreshError` otherwise (including above empty states). `AnomalyChart` in the Phase 7 plan (Task 3) was already amended by the Phase 4 review. Otherwise Phase 7 reverts Phase 3/4's fixes.
 
 ## Pending user action (Phase 4 Task 3, steps 3–4)
